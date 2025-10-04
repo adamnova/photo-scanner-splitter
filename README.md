@@ -1,5 +1,10 @@
 # Photo Scanner Splitter
 
+[![CI Pipeline](https://github.com/adamnova/photo-scanner-splitter/actions/workflows/ci.yml/badge.svg)](https://github.com/adamnova/photo-scanner-splitter/actions/workflows/ci.yml)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 A Python tool to automatically detect, extract, and align individual photos from scanned images containing multiple photographs.
 
 ## Features
@@ -300,12 +305,58 @@ photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
 
 ## Development
 
+### Setting Up Development Environment
+
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone https://github.com/adamnova/photo-scanner-splitter.git
+   cd photo-scanner-splitter
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
+   pip install -e .
+   ```
+
+2. (Optional) Install pre-commit hooks:
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+
+### Code Quality
+
+This project maintains high code quality standards using:
+- **Black**: Code formatting (100 char line length)
+- **Ruff**: Fast linting and code quality checks
+- **mypy**: Static type checking
+- **Pre-commit**: Automated checks before commits
+
+Run quality checks:
+```bash
+# Format code
+black photo_splitter/ tests/
+
+# Run linter
+ruff check photo_splitter/ tests/ --fix
+
+# Type check
+mypy photo_splitter/
+```
+
 ### Running Tests
 
 ```bash
-python -m pytest tests/
+# Run all tests
+python -m unittest discover tests -v
+
+# Run with coverage
+pip install coverage
+coverage run -m unittest discover tests -v
+coverage report -m
 ```
 
+### Continuous Integration
+
+All pull requests are automatically tested with GitHub Actions on Python 3.8-3.12. Tests must pass and code must be formatted before merging.
 ### Programmatic Usage
 
 You can also use the photo detector programmatically in your Python code:

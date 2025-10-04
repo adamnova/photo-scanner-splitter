@@ -2,200 +2,202 @@
 Tests for photo detector module
 """
 
-import unittest
-import numpy as np
-import cv2
-import tempfile
 import os
-from pathlib import Path
+import tempfile
+import unittest
+
+import cv2
+import numpy as np
 
 from photo_splitter.detector import PhotoDetector
 
 
 class TestPhotoDetector(unittest.TestCase):
     """Test cases for PhotoDetector class"""
-    
+
     def setUp(self):
         """Set up test fixtures"""
         self.detector = PhotoDetector()
         self.temp_dir = tempfile.mkdtemp()
-    
+
     def tearDown(self):
         """Clean up test files"""
         import shutil
+
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
-    
+
     def test_detector_initialization(self):
         """Test detector initializes with correct default values"""
         self.assertEqual(self.detector.min_area, 10000)
         self.assertEqual(self.detector.edge_threshold1, 50)
         self.assertEqual(self.detector.edge_threshold2, 150)
-    
+
     def test_detector_custom_initialization(self):
         """Test detector initializes with custom values"""
         detector = PhotoDetector(min_area=5000, edge_threshold1=30, edge_threshold2=100)
         self.assertEqual(detector.min_area, 5000)
         self.assertEqual(detector.edge_threshold1, 30)
         self.assertEqual(detector.edge_threshold2, 100)
-    
+
     def test_detect_photos_invalid_path(self):
         """Test detection with invalid image path raises error"""
         with self.assertRaises(ValueError):
             self.detector.detect_photos("/nonexistent/path.jpg")
-    
+
     def test_detect_photos_simple_image(self):
         """Test detection on a simple synthetic image"""
         # Create a simple test image with a white rectangle (photo) on black background
         image = np.zeros((500, 500, 3), dtype=np.uint8)
         cv2.rectangle(image, (100, 100), (400, 400), (255, 255, 255), -1)
-        
+
         # Save to temp file
         temp_path = os.path.join(self.temp_dir, "test_image.jpg")
         cv2.imwrite(temp_path, image)
-        
+
         # Detect photos
         detected = self.detector.detect_photos(temp_path)
-        
+
         # Should detect at least one photo
         self.assertGreater(len(detected), 0)
-    
+
     def test_extract_photo(self):
         """Test photo extraction"""
         # Create test image
         image = np.zeros((500, 500, 3), dtype=np.uint8)
         cv2.rectangle(image, (100, 100), (400, 400), (255, 255, 255), -1)
-        
+
         temp_path = os.path.join(self.temp_dir, "test_extract.jpg")
         cv2.imwrite(temp_path, image)
-        
+
         # Create a simple contour and bounding box
         bbox = (100, 100, 300, 300)
         contour = np.array([[100, 100], [400, 100], [400, 400], [100, 400]])
-        
+
         # Extract photo
         extracted = self.detector.extract_photo(temp_path, contour, bbox)
-        
+
         # Check dimensions
         self.assertEqual(extracted.shape[0], 300)  # height
         self.assertEqual(extracted.shape[1], 300)  # width
-    
+
     def test_extract_photo_invalid_path(self):
         """Test that extract_photo raises error for invalid image path"""
         bbox = (100, 100, 300, 300)
         contour = np.array([[100, 100], [400, 100], [400, 400], [100, 400]])
-        
+
         with self.assertRaises(ValueError):
             self.detector.extract_photo("/nonexistent/path.jpg", contour, bbox)
-    
+
     def test_detect_rotation_no_rotation(self):
         """Test rotation detection on non-rotated image"""
         # Create a simple rectangular image
         image = np.ones((400, 300, 3), dtype=np.uint8) * 255
         cv2.rectangle(image, (50, 50), (250, 350), (0, 0, 0), 2)
-        
+
         angle = self.detector.detect_rotation(image)
-        
+
         # Angle should be close to 0 for non-rotated image
         self.assertLess(abs(angle), 10)
-    
+
     def test_rotate_image_no_rotation(self):
         """Test that images with angle < 0.5 are not rotated"""
         image = np.ones((100, 100, 3), dtype=np.uint8) * 128
         rotated = self.detector.rotate_image(image, 0.3)
-        
+
         # Should return original image without rotation
         np.testing.assert_array_equal(image, rotated)
-    
+
     def test_rotate_image_90_degrees(self):
         """Test 90 degree rotation"""
         # Create a non-square image to verify rotation
         image = np.ones((100, 200, 3), dtype=np.uint8) * 255
         rotated = self.detector.rotate_image(image, 90)
-        
+
         # After 90 degree rotation, dimensions should be swapped (approximately)
         # Width should become height and vice versa
         self.assertGreater(rotated.shape[0], rotated.shape[1])
-    
+
     def test_rotate_image_small_angle(self):
         """Test small angle rotation"""
         image = np.ones((100, 100, 3), dtype=np.uint8) * 200
         rotated = self.detector.rotate_image(image, 15)
-        
+
         # Image should be rotated (dimensions may change slightly)
         self.assertIsNotNone(rotated)
         self.assertEqual(rotated.shape[2], 3)  # Should still be 3 channels
-    
+
     def test_dust_removal_initialization(self):
         """Test that dust removal flag is properly initialized"""
         detector_no_dust = PhotoDetector(dust_removal=False)
         detector_with_dust = PhotoDetector(dust_removal=True)
-        
+
         self.assertFalse(detector_no_dust.dust_removal)
         self.assertTrue(detector_with_dust.dust_removal)
-    
+
     def test_dust_removal_basic(self):
         """Test basic dust removal functionality"""
         # Create a test image with simulated dust spots
         image = np.ones((200, 200, 3), dtype=np.uint8) * 200
-        
+
         # Add some random "dust" spots (small bright and dark spots)
         for _ in range(20):
             x, y = np.random.randint(10, 190, 2)
             # Bright dust
             cv2.circle(image, (x, y), 2, (255, 255, 255), -1)
-        
+
         for _ in range(20):
             x, y = np.random.randint(10, 190, 2)
             # Dark dust
             cv2.circle(image, (x, y), 2, (0, 0, 0), -1)
-        
+
         # Apply dust removal
         cleaned = self.detector.remove_dust(image)
-        
+
         # Check that output has same dimensions
         self.assertEqual(cleaned.shape, image.shape)
-        
+
         # Check that it's still a valid image
         self.assertIsNotNone(cleaned)
         self.assertEqual(cleaned.dtype, np.uint8)
-    
+
     def test_dust_removal_preserves_clean_image(self):
         """Test that dust removal doesn't significantly alter clean images"""
         # Create a clean gradient image
         image = np.zeros((100, 100, 3), dtype=np.uint8)
         for i in range(100):
             image[i, :, :] = i * 2
-        
+
         cleaned = self.detector.remove_dust(image)
-        
+
         # Check dimensions preserved
         self.assertEqual(cleaned.shape, image.shape)
-        
+
         # The image should be relatively similar (accounting for denoising)
         # We don't expect them to be identical due to denoising
         self.assertIsNotNone(cleaned)
+
     def test_detect_rotation_enhanced(self):
         """Test enhanced rotation detection returns dict with angle and confidence"""
         # Create a simple rectangular image
         image = np.ones((400, 300, 3), dtype=np.uint8) * 255
         cv2.rectangle(image, (50, 50), (250, 350), (0, 0, 0), 2)
-        
+
         result = self.detector.detect_rotation_enhanced(image)
-        
+
         # Result should be a dictionary
         self.assertIsInstance(result, dict)
-        self.assertIn('angle', result)
-        self.assertIn('confidence', result)
-        
+        self.assertIn("angle", result)
+        self.assertIn("confidence", result)
+
         # Values should be floats
-        self.assertIsInstance(result['angle'], float)
-        self.assertIsInstance(result['confidence'], float)
-        
+        self.assertIsInstance(result["angle"], float)
+        self.assertIsInstance(result["confidence"], float)
+
         # Confidence should be between 0 and 1
-        self.assertGreaterEqual(result['confidence'], 0.0)
-        self.assertLessEqual(result['confidence'], 1.0)
-    
+        self.assertGreaterEqual(result["confidence"], 0.0)
+        self.assertLessEqual(result["confidence"], 1.0)
+
     def test_detect_rotation_hough(self):
         """Test Hough line-based rotation detection"""
         # Create an image with horizontal lines
@@ -203,95 +205,96 @@ class TestPhotoDetector(unittest.TestCase):
         # Draw horizontal lines
         for y in range(100, 300, 50):
             cv2.line(image, (50, y), (350, y), (0, 0, 0), 2)
-        
+
         result = self.detector._detect_rotation_hough(image)
-        
+
         # Should return a dict with angle and confidence
         self.assertIsInstance(result, dict)
-        self.assertIn('angle', result)
-        self.assertIn('confidence', result)
-        
+        self.assertIn("angle", result)
+        self.assertIn("confidence", result)
+
         # Angle should be close to 0 for horizontal lines
-        self.assertLess(abs(result['angle']), 10)
-    
+        self.assertLess(abs(result["angle"]), 10)
+
     def test_detect_rotation_projection(self):
         """Test projection-based rotation detection"""
         # Create an image with text-like horizontal patterns
         image = np.ones((400, 400, 3), dtype=np.uint8) * 255
         # Simulate text with horizontal bars
         for y in range(100, 300, 30):
-            cv2.rectangle(image, (50, y), (350, y+10), (0, 0, 0), -1)
-        
+            cv2.rectangle(image, (50, y), (350, y + 10), (0, 0, 0), -1)
+
         result = self.detector._detect_rotation_projection(image)
-        
+
         # Should return a dict with angle and confidence
         self.assertIsInstance(result, dict)
-        self.assertIn('angle', result)
-        self.assertIn('confidence', result)
-        
+        self.assertIn("angle", result)
+        self.assertIn("confidence", result)
+
         # Values should be floats
-        self.assertIsInstance(result['angle'], float)
-        self.assertIsInstance(result['confidence'], float)
-    
+        self.assertIsInstance(result["angle"], float)
+        self.assertIsInstance(result["confidence"], float)
+
     def test_detect_rotation_enhanced_with_rotated_image(self):
         """Test enhanced rotation detection on a rotated image"""
         # Create an image with clear horizontal features
         image = np.ones((400, 400, 3), dtype=np.uint8) * 255
         cv2.rectangle(image, (100, 150), (300, 170), (0, 0, 0), -1)
         cv2.rectangle(image, (100, 230), (300, 250), (0, 0, 0), -1)
-        
+
         # Rotate the image by a known angle
         rotated_5deg = self.detector.rotate_image(image, 5)
-        
+
         # Detect rotation
         result = self.detector.detect_rotation_enhanced(rotated_5deg)
-        
+
         # The detected angle should be close to -5 (correction angle)
         # Allow some tolerance due to image processing artifacts
-        self.assertLess(abs(result['angle'] + 5), 15)
-    
+        self.assertLess(abs(result["angle"] + 5), 15)
+
     def test_detect_rotation_no_features(self):
         """Test rotation detection on image with no clear features"""
         # Create a uniform image
         image = np.ones((200, 200, 3), dtype=np.uint8) * 128
-        
+
         result = self.detector.detect_rotation_enhanced(image)
-        
+
         # Should return a result even with no features
         self.assertIsInstance(result, dict)
-        self.assertIn('angle', result)
-        self.assertIn('confidence', result)
-        
+        self.assertIn("angle", result)
+        self.assertIn("confidence", result)
+
         # Should return valid confidence value (0-1)
-        self.assertGreaterEqual(result['confidence'], 0.0)
-        self.assertLessEqual(result['confidence'], 1.0)
-    
+        self.assertGreaterEqual(result["confidence"], 0.0)
+        self.assertLessEqual(result["confidence"], 1.0)
+
     def test_detect_rotation_backward_compatibility(self):
         """Test that detect_rotation maintains backward compatibility"""
         # Create a simple rectangular image
         image = np.ones((400, 300, 3), dtype=np.uint8) * 255
         cv2.rectangle(image, (50, 50), (250, 350), (0, 0, 0), 2)
-        
+
         # Original method should return a float
         angle = self.detector.detect_rotation(image)
-        
+
         # Should return a float (backward compatible)
         self.assertIsInstance(angle, float)
+
     def test_face_detector_initialization(self):
         """Test that face detector initializes"""
         # The face detector should attempt to load
         # It may be None if download fails, but that's ok for testing
         self.assertIsNotNone(self.detector)
-    
+
     def test_detect_faces_returns_list(self):
         """Test that detect_faces returns a list"""
         # Create a simple test image
         image = np.ones((200, 200, 3), dtype=np.uint8) * 128
-        
+
         # Should return a list (possibly empty if no faces or model not loaded)
         faces = self.detector.detect_faces(image)
         self.assertIsInstance(faces, list)
-    
+
     def test_detect_faces_with_synthetic_face(self):
         """Test face detection with a synthetic face-like pattern"""
         # Create an image with face-like colors (skin tone)
@@ -301,36 +304,36 @@ class TestPhotoDetector(unittest.TestCase):
         # Add eyes
         cv2.circle(image, (170, 180), 10, (50, 50, 50), -1)
         cv2.circle(image, (230, 180), 10, (50, 50, 50), -1)
-        
+
         faces = self.detector.detect_faces(image)
-        
+
         # Result should be a list of dicts
         self.assertIsInstance(faces, list)
-        
+
         # If face detection is working and a face is detected
         if len(faces) > 0:
-            self.assertIn('bbox', faces[0])
-            self.assertIn('confidence', faces[0])
-            self.assertEqual(len(faces[0]['bbox']), 4)  # x, y, w, h
-    
+            self.assertIn("bbox", faces[0])
+            self.assertIn("confidence", faces[0])
+            self.assertEqual(len(faces[0]["bbox"]), 4)  # x, y, w, h
+
     def test_detect_faces_confidence_filtering(self):
         """Test that face detection respects confidence threshold"""
         # Create detector with high confidence threshold
         high_conf_detector = PhotoDetector(face_confidence=0.95)
-        
+
         # Create detector with low confidence threshold
         low_conf_detector = PhotoDetector(face_confidence=0.1)
-        
+
         # Create a simple image
         image = np.ones((200, 200, 3), dtype=np.uint8) * 128
-        
+
         # Both should return lists
         faces_high = high_conf_detector.detect_faces(image)
         faces_low = low_conf_detector.detect_faces(image)
-        
+
         self.assertIsInstance(faces_high, list)
         self.assertIsInstance(faces_low, list)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

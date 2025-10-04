@@ -98,4 +98,22 @@ photo-splitter --help
 - Check out [examples/README.md](examples/README.md) for more examples
 - Run the tests: `python -m unittest discover tests`
 
+## For Developers
+
+If you want to contribute or modify the code:
+
+1. Install development dependencies:
+```bash
+pip install -r requirements-dev.txt
+```
+
+2. Run quality checks:
+```bash
+make format    # Format code with black
+make lint      # Check code quality with ruff
+make test      # Run all tests
+```
+
+3. See [CONTRIBUTING.md](CONTRIBUTING.md) for full development guidelines
+
 Happy scanning! 📸
