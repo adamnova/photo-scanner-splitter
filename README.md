@@ -5,8 +5,10 @@ A Python tool to automatically detect, extract, and align individual photos from
 ## Features
 
 - **Automatic Photo Detection**: Detects individual photos in scanned images using edge detection and contour analysis
+- **High-Quality Face Detection**: Detects people in images using deep learning-based face detection with ResNet SSD model
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
 - **Dust and Scratch Removal**: State-of-the-art algorithms to clean up dust, scratches, and film grain from old photos
+- **Location Identification**: Uses Ollama LLM to identify where photos were taken (optional)
 - **Interactive Validation**: Preview detected photos and confirm before saving
 - **Batch Processing**: Process single images or entire directories
 - **Flexible Configuration**: Customize detection sensitivity and processing options
@@ -17,6 +19,7 @@ A Python tool to automatically detect, extract, and align individual photos from
 
 - Python 3.8 or higher
 - pip
+- (Optional) Ollama for location identification
 
 ### Install from source
 
@@ -81,6 +84,33 @@ This feature uses advanced image processing algorithms optimized for maximum qua
 - Multi-scale morphological operations to detect dust at different sizes
 - Adaptive thresholding for precise dust mask creation
 - Navier-Stokes inpainting for highest quality restoration
+### Location Identification with Ollama
+
+Identify the location where photos were taken using AI:
+
+```bash
+photo-splitter input.jpg -o output_photos --identify-location
+```
+
+This feature:
+1. Requires [Ollama](https://ollama.ai) to be installed and running
+2. Uses a vision-capable model (default: `qwen2.5-vl:32b`) to analyze photos
+3. Saves location metadata in a separate text file alongside each photo
+4. Works with any Ollama vision model
+
+To use a different model or Ollama server:
+
+```bash
+photo-splitter input.jpg -o output_photos --identify-location \
+  --ollama-url http://localhost:11434 \
+  --ollama-model qwen2.5-vl:32b
+```
+
+**Note**: Make sure Ollama is running before using this feature. Install Ollama from [ollama.ai](https://ollama.ai) and pull a vision model:
+
+```bash
+ollama pull qwen2.5-vl:32b
+```
 
 ### Advanced Options
 
@@ -92,6 +122,67 @@ photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
 - `--no-rotate`: Disable automatic rotation detection and correction
 - `--no-interactive`: Disable interactive preview and confirmation
 - `--dust-removal`: Enable dust and scratch removal from photos
+- `--identify-location`: Enable location identification using Ollama LLM
+- `--ollama-url`: URL of the Ollama API server (default: http://localhost:11434)
+- `--ollama-model`: Ollama model to use for location identification (default: qwen2.5-vl:32b)
+
+## Face Detection
+
+The tool includes high-quality face detection powered by a deep learning ResNet SSD model. This can be used to detect people in images with high accuracy.
+
+### Using Face Detection Programmatically
+
+```python
+from photo_splitter.detector import PhotoDetector
+import cv2
+
+# Initialize detector with custom face confidence threshold
+detector = PhotoDetector(face_confidence=0.5)
+
+# Load your image
+image = cv2.imread('your_photo.jpg')
+
+# Detect faces
+faces = detector.detect_faces(image)
+
+# Process results
+for i, face in enumerate(faces, 1):
+    x, y, w, h = face['bbox']
+    confidence = face['confidence']
+    print(f"Face {i}: Location ({x}, {y}) Size: {w}x{h} Confidence: {confidence:.2%}")
+    
+    # Draw rectangle around face
+    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+# Save annotated image
+cv2.imwrite('faces_detected.jpg', image)
+```
+
+### Face Detection Parameters
+
+- **face_confidence**: Minimum confidence threshold (0.0 to 1.0, default: 0.5)
+  - Lower values detect more faces but may include false positives
+  - Higher values are more strict and only detect high-confidence faces
+
+### Face Detection Model
+
+The face detector uses OpenCV's DNN module with a pre-trained ResNet SSD model:
+- **Model**: res10_300x300_ssd_iter_140000.caffemodel
+- **Architecture**: Single Shot Detector (SSD) with ResNet-10 backbone
+- **Input Size**: 300x300 pixels
+- **Accuracy**: High accuracy on frontal and near-frontal faces
+
+The model is automatically downloaded on first use and cached in `~/.photo_splitter/`.
+
+### Example Demo
+
+Run the included face detection demo:
+
+```bash
+python examples/face_detection_demo.py
+```
+
+This will create a sample image with face-like patterns, detect them, and save an annotated result.
 
 ## How It Works
 
@@ -109,6 +200,11 @@ photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
 7. **Alignment**: Rotates the photo to correct orientation if needed
 8. **User Validation**: (if interactive mode) Shows preview for user confirmation
 9. **Saving**: Saves the processed photo with a descriptive filename
+5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
+6. **Alignment**: Rotates the photo to correct orientation if needed
+7. **Location Identification**: (optional) Uses Ollama LLM to identify where the photo was taken
+8. **User Validation**: (if interactive mode) Shows preview for user confirmation
+9. **Saving**: Saves the processed photo with a descriptive filename and optional location metadata
 
 ## Examples
 
@@ -134,7 +230,20 @@ You have many scans and want to process them all without manual review:
 photo-splitter large_scan_batch/ -o photos --no-interactive
 ```
 
-### Example 3: Scanning Larger Photos
+### Example 3: Identify Photo Locations
+
+You have old family photos and want to know where they were taken:
+
+```bash
+photo-splitter family_photos.jpg -o organized_photos --identify-location
+```
+
+The tool will:
+- Detect and extract individual photos
+- Use AI to analyze each photo and identify the location
+- Save location information in text files like `family_photos_photo_1_location.txt`
+
+### Example 4: Scanning Larger Photos
 
 If you're scanning larger photos and the default minimum area is too small:
 
@@ -191,13 +300,14 @@ python -m pytest tests/
 photo-scanner-splitter/
 ├── photo_splitter/
 │   ├── __init__.py
-│   ├── detector.py      # Core photo detection and processing
-│   └── cli.py          # Command-line interface
-├── tests/              # Test files
-├── examples/           # Example images and usage
-├── requirements.txt    # Python dependencies
-├── setup.py           # Package setup
-└── README.md          # This file
+│   ├── detector.py           # Core photo detection and processing
+│   ├── location_identifier.py # Location identification using Ollama
+│   └── cli.py                # Command-line interface
+├── tests/                    # Test files
+├── examples/                 # Example images and usage
+├── requirements.txt          # Python dependencies
+├── setup.py                  # Package setup
+└── README.md                # This file
 ```
 
 ## Contributing
@@ -212,3 +322,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Uses OpenCV for image processing
 - Built with Python and NumPy
+- Location identification powered by Ollama

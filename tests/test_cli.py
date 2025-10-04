@@ -133,6 +133,17 @@ class TestPhotoSplitterCLI(unittest.TestCase):
         
         # Should successfully process the image
         self.assertGreaterEqual(count, 0)
+    def test_cli_with_location_identification_disabled(self):
+        """Test CLI initialization with location identification disabled"""
+        cli = PhotoSplitterCLI(
+            input_path=self.input_dir,
+            output_dir=self.output_dir,
+            interactive=False,
+            identify_location=False
+        )
+        
+        self.assertFalse(cli.identify_location)
+        self.assertIsNone(cli.location_identifier)
 
 
 if __name__ == '__main__':
