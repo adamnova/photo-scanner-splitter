@@ -175,56 +175,90 @@ class PhotoDetector:
         """
         Remove dust and scratches from photos using state-of-the-art algorithms.
         
-        This method uses a multi-stage approach:
-        1. Non-local means denoising for general noise reduction
-        2. Morphological operations to detect dust spots
-        3. Inpainting to remove detected dust and scratches
+        This method uses a quality-focused multi-stage approach:
+        1. Bilateral filtering for edge-preserving noise reduction
+        2. Non-local means denoising for superior quality
+        3. Advanced morphological operations for precise dust detection
+        4. Navier-Stokes inpainting for highest quality restoration
         
         Args:
             image: Input image as numpy array
             
         Returns:
-            Cleaned image with dust removed
+            Cleaned image with dust removed (quality-optimized)
         """
         # Work with a copy to avoid modifying the original
         cleaned = image.copy()
         
-        # Stage 1: Apply non-local means denoising for general noise reduction
-        # This is effective for subtle dust and film grain
+        # Stage 1: Edge-preserving bilateral filtering for noise reduction
+        # Preserves edges while smoothing flat regions - critical for quality
+        cleaned = cv2.bilateralFilter(cleaned, d=9, sigmaColor=75, sigmaSpace=75)
+        
+        # Stage 2: Apply non-local means denoising with higher quality settings
+        # Stronger filtering for better quality (slower but much better results)
         cleaned = cv2.fastNlMeansDenoisingColored(
             cleaned, 
             None,
-            h=10,           # Filter strength for luminance
-            hColor=10,      # Filter strength for color
-            templateWindowSize=7,
-            searchWindowSize=21
+            h=15,           # Increased filter strength for better noise removal
+            hColor=15,      # Increased color filter strength for better quality
+            templateWindowSize=9,    # Larger template for better quality
+            searchWindowSize=25      # Larger search area for superior results
         )
         
-        # Stage 2: Detect dust spots using morphological operations
+        # Stage 3: Advanced dust detection using multiple kernel sizes
         # Convert to grayscale for dust detection
         gray = cv2.cvtColor(cleaned, cv2.COLOR_BGR2GRAY)
         
-        # Apply morphological operations to identify small dark or bright spots (dust)
-        # Use top-hat transform to find bright spots
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel)
+        # Apply bilateral filter to grayscale for better dust detection
+        gray_filtered = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
         
-        # Use black-hat transform to find dark spots
-        blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel)
+        # Use multiple morphological operations with different kernel sizes
+        # for more accurate dust detection
+        dust_masks = []
         
-        # Combine both to get all dust spots
-        dust_mask = cv2.add(tophat, blackhat)
+        # Detect small dust (3x3 kernel)
+        kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        tophat_small = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_small)
+        blackhat_small = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_small)
+        dust_masks.append(cv2.add(tophat_small, blackhat_small))
         
-        # Threshold to create binary mask of dust
-        _, dust_mask = cv2.threshold(dust_mask, 10, 255, cv2.THRESH_BINARY)
+        # Detect medium dust (5x5 kernel)
+        kernel_medium = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        tophat_medium = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_medium)
+        blackhat_medium = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_medium)
+        dust_masks.append(cv2.add(tophat_medium, blackhat_medium))
         
-        # Dilate the mask slightly to ensure we capture the full extent of dust spots
-        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        dust_mask = cv2.dilate(dust_mask, kernel_dilate, iterations=1)
+        # Detect larger dust/scratches (7x7 kernel)
+        kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        tophat_large = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_large)
+        blackhat_large = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_large)
+        dust_masks.append(cv2.add(tophat_large, blackhat_large))
         
-        # Stage 3: Inpainting to remove detected dust
-        # Use Telea inpainting algorithm (fast and effective for small defects)
+        # Combine all dust masks for comprehensive detection
+        dust_mask = cv2.add(cv2.add(dust_masks[0], dust_masks[1]), dust_masks[2])
+        
+        # Use adaptive thresholding for better mask quality
+        dust_mask = cv2.adaptiveThreshold(
+            dust_mask, 
+            255, 
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY, 
+            11,  # Block size
+            -2   # Constant subtracted from mean
+        )
+        
+        # Morphological operations to refine the mask
+        kernel_refine = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        # Close small holes in dust regions
+        dust_mask = cv2.morphologyEx(dust_mask, cv2.MORPH_CLOSE, kernel_refine, iterations=1)
+        # Dilate slightly to ensure full dust coverage
+        dust_mask = cv2.dilate(dust_mask, kernel_refine, iterations=1)
+        
+        # Stage 4: High-quality inpainting using Navier-Stokes algorithm
+        # This method is slower but produces superior quality results
         if np.sum(dust_mask) > 0:  # Only inpaint if dust was detected
-            cleaned = cv2.inpaint(cleaned, dust_mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
+            # Use Navier-Stokes inpainting for better quality
+            # Larger radius for better context and smoother results
+            cleaned = cv2.inpaint(cleaned, dust_mask, inpaintRadius=5, flags=cv2.INPAINT_NS)
         
         return cleaned

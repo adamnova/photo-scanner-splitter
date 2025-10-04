@@ -69,16 +69,18 @@ photo-splitter input.jpg -o output_photos --no-rotate
 
 ### Enable Dust Removal
 
-Clean up old photos with dust, scratches, and film grain:
+Clean up old photos with dust, scratches, and film grain using a quality-optimized algorithm:
 
 ```bash
 photo-splitter input.jpg -o output_photos --dust-removal
 ```
 
-This feature uses advanced image processing algorithms including:
-- Non-local means denoising for subtle noise reduction
-- Morphological operations to detect dust spots
-- Inpainting to remove detected dust and scratches
+This feature uses advanced image processing algorithms optimized for maximum quality:
+- Bilateral filtering for edge-preserving noise reduction
+- Non-local means denoising with enhanced parameters for superior quality
+- Multi-scale morphological operations to detect dust at different sizes
+- Adaptive thresholding for precise dust mask creation
+- Navier-Stokes inpainting for highest quality restoration
 
 ### Advanced Options
 
@@ -97,10 +99,12 @@ photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
 2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
 3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
 4. **Extraction**: Extracts each detected photo using its bounding box
-5. **Dust Removal** (optional): Applies advanced algorithms to clean dust and scratches:
-   - Non-local means denoising for general noise reduction
-   - Morphological operations (top-hat and black-hat transforms) to detect dust spots
-   - Inpainting using Telea algorithm to remove detected defects
+5. **Dust Removal** (optional): Applies quality-optimized algorithms to clean dust and scratches:
+   - Bilateral filtering for edge-preserving noise reduction
+   - Non-local means denoising with enhanced quality parameters
+   - Multi-scale morphological operations (3x3, 5x5, 7x7 kernels) to detect dust at different sizes
+   - Adaptive thresholding for precise dust detection
+   - Navier-Stokes inpainting algorithm for superior quality restoration
 6. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
 7. **Alignment**: Rotates the photo to correct orientation if needed
 8. **User Validation**: (if interactive mode) Shows preview for user confirmation
@@ -153,7 +157,7 @@ photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
 3. **Background**: A uniform, light-colored background works best
 4. **Spacing**: Leave some space between photos on the scanner bed
 5. **Alignment**: Photos don't need to be perfectly aligned - rotation correction will handle small angles
-6. **Dust Removal**: For best results with old photos, enable `--dust-removal` to clean up dust spots and scratches
+6. **Dust Removal**: For best results with old photos, enable `--dust-removal` to clean up dust spots and scratches with quality-optimized algorithms
 
 ## Troubleshooting
 

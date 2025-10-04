@@ -75,7 +75,7 @@ photo-splitter my_scans/ -o all_photos --no-interactive
 
 - `--no-interactive`: Skip previews, save all detected photos
 - `--no-rotate`: Don't auto-correct rotation
-- `--dust-removal`: Clean up dust, scratches, and film grain from old photos
+- `--dust-removal`: Clean up dust, scratches, and film grain from old photos (quality-optimized)
 - `--min-area 20000`: Only detect larger photos (adjust number as needed)
 
 ## Tips for Best Results
