@@ -12,6 +12,21 @@ python examples/create_sample.py
 
 This will create `sample_scan.jpg` containing 3 photos at different angles.
 
+## Face Detection Demo
+
+Run the `face_detection_demo.py` script to see face detection in action:
+
+```bash
+python examples/face_detection_demo.py
+```
+
+This will:
+1. Create a sample image with face-like patterns
+2. Detect faces using the deep learning model
+3. Save the result with bounding boxes around detected faces
+
+The output will be saved as `face_detection_result.jpg`.
+
 ## Running the Splitter
 
 ### Non-Interactive Mode
