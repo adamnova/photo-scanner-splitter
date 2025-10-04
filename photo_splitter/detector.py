@@ -6,6 +6,13 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
+from typing import List, Tuple, Optional, Dict
+import os
+import urllib.request
+
+
+# Constants
+ROTATION_THRESHOLD_DEGREES = 0.5  # Minimum rotation angle to apply correction
 
 
 class PhotoDetector:
@@ -14,6 +21,9 @@ class PhotoDetector:
     def __init__(
         self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150
     ):
+    
+    def __init__(self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150,
+                 face_confidence: float = 0.5):
         """
         Initialize the photo detector
 
@@ -21,12 +31,18 @@ class PhotoDetector:
             min_area: Minimum area for a photo to be considered valid (in pixels)
             edge_threshold1: First threshold for Canny edge detection
             edge_threshold2: Second threshold for Canny edge detection
+            face_confidence: Minimum confidence threshold for face detection (0.0 to 1.0)
         """
         self.min_area = min_area
         self.edge_threshold1 = edge_threshold1
         self.edge_threshold2 = edge_threshold2
 
     def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
+        self.face_confidence = face_confidence
+        self.face_net = None
+        self._load_face_detector()
+    
+    def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, Tuple[int, int, int, int]]]:
         """
         Detect individual photos in a scanned image
 
@@ -34,7 +50,8 @@ class PhotoDetector:
             image_path: Path to the scanned image
 
         Returns:
-            List of tuples (contour, bounding_box) for each detected photo
+            List of tuples (contour, bounding_box) for each detected photo.
+            Each bounding_box is a tuple of (x, y, w, h).
         """
         # Read the image
         image = cv2.imread(image_path)
@@ -90,6 +107,9 @@ class PhotoDetector:
             Extracted photo as numpy array
         """
         image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not read image from {image_path}")
+        
         x, y, w, h = bounding_box
 
         # Extract the region
@@ -145,7 +165,7 @@ class PhotoDetector:
         Returns:
             Rotated image
         """
-        if abs(angle) < 0.5:  # Don't rotate if angle is very small
+        if abs(angle) < ROTATION_THRESHOLD_DEGREES:  # Don't rotate if angle is very small
             return image
 
         h, w = image.shape[:2]
@@ -175,3 +195,94 @@ class PhotoDetector:
         )
 
         return rotated
+    
+    def _load_face_detector(self):
+        """
+        Load the DNN-based face detection model
+        Uses OpenCV's pre-trained ResNet SSD face detector
+        """
+        try:
+            # Define model URLs and paths
+            model_dir = os.path.join(os.path.expanduser("~"), ".photo_splitter")
+            os.makedirs(model_dir, exist_ok=True)
+            
+            prototxt_path = os.path.join(model_dir, "deploy.prototxt")
+            model_path = os.path.join(model_dir, "res10_300x300_ssd_iter_140000.caffemodel")
+            
+            prototxt_url = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
+            model_url = "https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
+            
+            # Download prototxt if not exists
+            if not os.path.exists(prototxt_path):
+                urllib.request.urlretrieve(prototxt_url, prototxt_path)
+            
+            # Download model if not exists
+            if not os.path.exists(model_path):
+                urllib.request.urlretrieve(model_url, model_path)
+            
+            # Load the model
+            self.face_net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
+            
+        except Exception as e:
+            # If loading fails, face detection will be disabled
+            print(f"Warning: Could not load face detection model: {e}")
+            self.face_net = None
+    
+    def detect_faces(self, image: np.ndarray) -> List[Dict[str, any]]:
+        """
+        Detect faces in an image using deep learning
+        
+        Args:
+            image: Input image as numpy array (BGR format)
+            
+        Returns:
+            List of dictionaries containing face information:
+            - 'bbox': Tuple of (x, y, width, height)
+            - 'confidence': Detection confidence score (0.0 to 1.0)
+        """
+        if self.face_net is None:
+            return []
+        
+        h, w = image.shape[:2]
+        
+        # Prepare the image for DNN
+        blob = cv2.dnn.blobFromImage(
+            cv2.resize(image, (300, 300)),
+            1.0,
+            (300, 300),
+            (104.0, 177.0, 123.0)
+        )
+        
+        # Pass the blob through the network
+        self.face_net.setInput(blob)
+        detections = self.face_net.forward()
+        
+        faces = []
+        
+        # Process detections
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            
+            # Filter by confidence threshold
+            if confidence > self.face_confidence:
+                # Get bounding box coordinates
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (startX, startY, endX, endY) = box.astype("int")
+                
+                # Ensure coordinates are within image bounds
+                startX = max(0, startX)
+                startY = max(0, startY)
+                endX = min(w, endX)
+                endY = min(h, endY)
+                
+                width = endX - startX
+                height = endY - startY
+                
+                # Only include valid detections
+                if width > 0 and height > 0:
+                    faces.append({
+                        'bbox': (startX, startY, width, height),
+                        'confidence': float(confidence)
+                    })
+        
+        return faces

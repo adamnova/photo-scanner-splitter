@@ -147,6 +147,8 @@ You can view CI results in the "Actions" tab of the repository.
 - **Format Support**: Add support for more image formats
 - **GUI Interface**: Create a graphical user interface
 - **Batch Statistics**: Report statistics about batch processing
+- **Face Recognition**: Extend face detection to recognize and group photos by person
+- **Face-based Photo Sorting**: Automatically organize photos based on detected people
 
 ### Bug Fixes
 
@@ -196,6 +198,8 @@ Contains the `PhotoDetector` class with methods:
 - `extract_photo()`: Extract individual photos
 - `detect_rotation()`: Detect rotation angle
 - `rotate_image()`: Correct rotation
+- `detect_faces()`: Detect people in images using deep learning
+- `_load_face_detector()`: Load face detection model (internal)
 
 ### cli.py
 
