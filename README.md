@@ -5,6 +5,7 @@ A Python tool to automatically detect, extract, and align individual photos from
 ## Features
 
 - **Automatic Photo Detection**: Detects individual photos in scanned images using edge detection and contour analysis
+- **High-Quality Face Detection**: Detects people in images using deep learning-based face detection with ResNet SSD model
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
 - **Location Identification**: Uses Ollama LLM to identify where photos were taken (optional)
 - **Interactive Validation**: Preview detected photos and confirm before saving
@@ -108,6 +109,64 @@ photo-splitter input.jpg -o output_photos --min-area 20000
 - `--identify-location`: Enable location identification using Ollama LLM
 - `--ollama-url`: URL of the Ollama API server (default: http://localhost:11434)
 - `--ollama-model`: Ollama model to use for location identification (default: qwen2.5-vl:32b)
+
+## Face Detection
+
+The tool includes high-quality face detection powered by a deep learning ResNet SSD model. This can be used to detect people in images with high accuracy.
+
+### Using Face Detection Programmatically
+
+```python
+from photo_splitter.detector import PhotoDetector
+import cv2
+
+# Initialize detector with custom face confidence threshold
+detector = PhotoDetector(face_confidence=0.5)
+
+# Load your image
+image = cv2.imread('your_photo.jpg')
+
+# Detect faces
+faces = detector.detect_faces(image)
+
+# Process results
+for i, face in enumerate(faces, 1):
+    x, y, w, h = face['bbox']
+    confidence = face['confidence']
+    print(f"Face {i}: Location ({x}, {y}) Size: {w}x{h} Confidence: {confidence:.2%}")
+    
+    # Draw rectangle around face
+    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+# Save annotated image
+cv2.imwrite('faces_detected.jpg', image)
+```
+
+### Face Detection Parameters
+
+- **face_confidence**: Minimum confidence threshold (0.0 to 1.0, default: 0.5)
+  - Lower values detect more faces but may include false positives
+  - Higher values are more strict and only detect high-confidence faces
+
+### Face Detection Model
+
+The face detector uses OpenCV's DNN module with a pre-trained ResNet SSD model:
+- **Model**: res10_300x300_ssd_iter_140000.caffemodel
+- **Architecture**: Single Shot Detector (SSD) with ResNet-10 backbone
+- **Input Size**: 300x300 pixels
+- **Accuracy**: High accuracy on frontal and near-frontal faces
+
+The model is automatically downloaded on first use and cached in `~/.photo_splitter/`.
+
+### Example Demo
+
+Run the included face detection demo:
+
+```bash
+python examples/face_detection_demo.py
+```
+
+This will create a sample image with face-like patterns, detect them, and save an annotated result.
 
 ## How It Works
 

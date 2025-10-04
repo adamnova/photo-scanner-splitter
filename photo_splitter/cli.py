@@ -97,7 +97,7 @@ class PhotoSplitterCLI:
                 # Auto-rotate if enabled
                 if self.auto_rotate:
                     angle = self.detector.detect_rotation(photo)
-                    if abs(angle) > 0.5:
+                    if abs(angle) > ROTATION_THRESHOLD_DEGREES:
                         print(f"  Photo {idx}: Detected rotation of {angle:.1f}°")
                         photo = self.detector.rotate_image(photo, -angle)
                 
@@ -152,6 +152,10 @@ class PhotoSplitterCLI:
                                detected_photos: List[Tuple[np.ndarray, Tuple[int, int, int, int]]]):
         """Show preview of detected photos with bounding boxes"""
         image = cv2.imread(image_path)
+        if image is None:
+            print(f"Warning: Could not read image from {image_path}")
+            return
+        
         preview = image.copy()
         
         for idx, (contour, bbox) in enumerate(detected_photos, 1):
