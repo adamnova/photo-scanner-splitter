@@ -78,7 +78,7 @@ photo-splitter input.jpg -o output_photos --identify-location
 
 This feature:
 1. Requires [Ollama](https://ollama.ai) to be installed and running
-2. Uses a vision-capable model (default: `llava:latest`) to analyze photos
+2. Uses a vision-capable model (default: `qwen2.5-vl:32b`) to analyze photos
 3. Saves location metadata in a separate text file alongside each photo
 4. Works with any Ollama vision model
 
@@ -87,13 +87,13 @@ To use a different model or Ollama server:
 ```bash
 photo-splitter input.jpg -o output_photos --identify-location \
   --ollama-url http://localhost:11434 \
-  --ollama-model llava:latest
+  --ollama-model qwen2.5-vl:32b
 ```
 
 **Note**: Make sure Ollama is running before using this feature. Install Ollama from [ollama.ai](https://ollama.ai) and pull a vision model:
 
 ```bash
-ollama pull llava:latest
+ollama pull qwen2.5-vl:32b
 ```
 
 ### Advanced Options
@@ -107,7 +107,7 @@ photo-splitter input.jpg -o output_photos --min-area 20000
 - `--no-interactive`: Disable interactive preview and confirmation
 - `--identify-location`: Enable location identification using Ollama LLM
 - `--ollama-url`: URL of the Ollama API server (default: http://localhost:11434)
-- `--ollama-model`: Ollama model to use for location identification (default: llava:latest)
+- `--ollama-model`: Ollama model to use for location identification (default: qwen2.5-vl:32b)
 
 ## How It Works
 

@@ -25,7 +25,7 @@ class TestLocationIdentifier(unittest.TestCase):
         with patch.object(LocationIdentifier, '_check_connection'):
             identifier = LocationIdentifier()
             self.assertEqual(identifier.ollama_url, "http://localhost:11434")
-            self.assertEqual(identifier.model, "llava:latest")
+            self.assertEqual(identifier.model, "qwen2.5-vl:32b")
     
     def test_identifier_custom_initialization(self):
         """Test identifier initializes with custom values"""

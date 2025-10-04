@@ -13,7 +13,7 @@ import requests
 class LocationIdentifier:
     """Identifies the location of photos using Ollama LLM"""
     
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "llava:latest"):
+    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "qwen2.5-vl:32b"):
         """
         Initialize the location identifier
         

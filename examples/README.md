@@ -36,7 +36,7 @@ Process with AI-powered location identification (requires Ollama):
 
 ```bash
 # Make sure Ollama is running first
-ollama pull llava:latest
+ollama pull qwen2.5-vl:32b
 
 # Then run the splitter with location identification
 photo-splitter examples/sample_scan.jpg -o examples/output --no-interactive --identify-location

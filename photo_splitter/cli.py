@@ -19,7 +19,7 @@ class PhotoSplitterCLI:
     
     def __init__(self, input_path: str, output_dir: str, auto_rotate: bool = True,
                  interactive: bool = True, identify_location: bool = False,
-                 ollama_url: str = "http://localhost:11434", ollama_model: str = "llava:latest"):
+                 ollama_url: str = "http://localhost:11434", ollama_model: str = "qwen2.5-vl:32b"):
         """
         Initialize the CLI
         
@@ -279,8 +279,8 @@ Examples:
                        help='Enable location identification using Ollama LLM')
     parser.add_argument('--ollama-url', type=str, default='http://localhost:11434',
                        help='URL of the Ollama API server (default: http://localhost:11434)')
-    parser.add_argument('--ollama-model', type=str, default='llava:latest',
-                       help='Ollama model to use for location identification (default: llava:latest)')
+    parser.add_argument('--ollama-model', type=str, default='qwen2.5-vl:32b',
+                       help='Ollama model to use for location identification (default: qwen2.5-vl:32b)')
     
     args = parser.parse_args()
     
