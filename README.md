@@ -10,6 +10,11 @@ A Python tool to automatically detect, extract, and align individual photos from
 ## Features
 
 - **Automatic Photo Detection**: Detects individual photos in scanned images using edge detection and contour analysis
+- **Enhanced Rotation Detection**: Reliably detects and corrects photo rotation using multiple strategies:
+  - Hough line transform for strong edges
+  - Projection profile analysis for text-like content
+  - Confidence scoring for each detection
+  - Weighted combination of multiple methods for improved accuracy
 - **High-Quality Face Detection**: Detects people in images using deep learning-based face detection with ResNet SSD model
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
 - **Location Identification**: Uses Ollama LLM to identify where photos were taken (optional)
@@ -179,7 +184,11 @@ This will create a sample image with face-like patterns, detect them, and save a
 2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
 3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
 4. **Extraction**: Extracts each detected photo using its bounding box
-5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
+5. **Enhanced Rotation Detection**: Uses multiple strategies to reliably determine rotation:
+   - Hough line detection analyzes dominant edge angles
+   - Projection profile analysis detects text-like patterns
+   - Confidence scoring ensures reliable results
+   - Weighted combination of methods provides accurate angle estimation
 6. **Alignment**: Rotates the photo to correct orientation if needed
 7. **Location Identification**: (optional) Uses Ollama LLM to identify where the photo was taken
 8. **User Validation**: (if interactive mode) Shows preview for user confirmation
@@ -248,8 +257,10 @@ photo-splitter input.jpg -o output --min-area 50000
 
 ### Incorrect rotation
 
-- The rotation detection works best with photos that have clear horizontal or vertical edges
-- For photos with mostly diagonal content, manual rotation may be needed
+- The enhanced rotation detection uses multiple strategies (edge detection and projection analysis) to handle various photo types
+- Works best with photos that have clear horizontal or vertical edges, text, or regular patterns
+- For photos with mostly diagonal content or artistic/abstract patterns, manual rotation may still be needed
+- You can access the confidence score using the `detect_rotation_enhanced()` method in the API
 
 ### Too many false detections
 
@@ -310,6 +321,38 @@ coverage report -m
 ### Continuous Integration
 
 All pull requests are automatically tested with GitHub Actions on Python 3.8-3.12. Tests must pass and code must be formatted before merging.
+### Programmatic Usage
+
+You can also use the photo detector programmatically in your Python code:
+
+```python
+from photo_splitter.detector import PhotoDetector
+import cv2
+
+# Initialize detector
+detector = PhotoDetector(min_area=10000)
+
+# Load an image
+image = cv2.imread('photo.jpg')
+
+# Enhanced rotation detection with confidence scoring
+result = detector.detect_rotation_enhanced(image)
+print(f"Detected angle: {result['angle']:.2f}°")
+print(f"Confidence: {result['confidence']:.2f}")
+
+# Simple rotation detection (backward compatible)
+angle = detector.detect_rotation(image)
+print(f"Angle: {angle:.2f}°")
+
+# Rotate image
+corrected = detector.rotate_image(image, -angle)
+
+# Detect photos in a scan
+photos = detector.detect_photos('scan.jpg')
+for i, (contour, bbox) in enumerate(photos):
+    extracted = detector.extract_photo('scan.jpg', contour, bbox)
+    cv2.imwrite(f'photo_{i}.jpg', extracted)
+```
 
 ### Project Structure
 
