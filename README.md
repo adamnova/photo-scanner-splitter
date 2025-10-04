@@ -12,6 +12,7 @@ A Python tool to automatically detect, extract, and align individual photos from
   - Weighted combination of multiple methods for improved accuracy
 - **High-Quality Face Detection**: Detects people in images using deep learning-based face detection with ResNet SSD model
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
+- **Dust and Scratch Removal**: State-of-the-art algorithms to clean up dust, scratches, and film grain from old photos
 - **Location Identification**: Uses Ollama LLM to identify where photos were taken (optional)
 - **Interactive Validation**: Preview detected photos and confirm before saving
 - **Batch Processing**: Process single images or entire directories
@@ -74,6 +75,20 @@ If you want to keep the original orientation:
 photo-splitter input.jpg -o output_photos --no-rotate
 ```
 
+### Enable Dust Removal
+
+Clean up old photos with dust, scratches, and film grain using a quality-optimized algorithm:
+
+```bash
+photo-splitter input.jpg -o output_photos --dust-removal
+```
+
+This feature uses advanced image processing algorithms optimized for maximum quality:
+- Bilateral filtering for edge-preserving noise reduction
+- Non-local means denoising with enhanced parameters for superior quality
+- Multi-scale morphological operations to detect dust at different sizes
+- Adaptive thresholding for precise dust mask creation
+- Navier-Stokes inpainting for highest quality restoration
 ### Location Identification with Ollama
 
 Identify the location where photos were taken using AI:
@@ -105,12 +120,13 @@ ollama pull qwen2.5-vl:32b
 ### Advanced Options
 
 ```bash
-photo-splitter input.jpg -o output_photos --min-area 20000
+photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
 ```
 
 - `--min-area`: Minimum area (in pixels) for a photo to be detected (default: 10000)
 - `--no-rotate`: Disable automatic rotation detection and correction
 - `--no-interactive`: Disable interactive preview and confirmation
+- `--dust-removal`: Enable dust and scratch removal from photos
 - `--identify-location`: Enable location identification using Ollama LLM
 - `--ollama-url`: URL of the Ollama API server (default: http://localhost:11434)
 - `--ollama-model`: Ollama model to use for location identification (default: qwen2.5-vl:32b)
@@ -179,6 +195,17 @@ This will create a sample image with face-like patterns, detect them, and save a
 2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
 3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
 4. **Extraction**: Extracts each detected photo using its bounding box
+5. **Dust Removal** (optional): Applies quality-optimized algorithms to clean dust and scratches:
+   - Bilateral filtering for edge-preserving noise reduction
+   - Non-local means denoising with enhanced quality parameters
+   - Multi-scale morphological operations (3x3, 5x5, 7x7 kernels) to detect dust at different sizes
+   - Adaptive thresholding for precise dust detection
+   - Navier-Stokes inpainting algorithm for superior quality restoration
+6. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
+7. **Alignment**: Rotates the photo to correct orientation if needed
+8. **User Validation**: (if interactive mode) Shows preview for user confirmation
+9. **Saving**: Saves the processed photo with a descriptive filename
+5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
 5. **Enhanced Rotation Detection**: Uses multiple strategies to reliably determine rotation:
    - Hough line detection analyzes dominant edge angles
    - Projection profile analysis detects text-like patterns
@@ -234,6 +261,14 @@ If you're scanning larger photos and the default minimum area is too small:
 photo-splitter input.jpg -o output --min-area 50000
 ```
 
+### Example 4: Restoring Old Photos with Dust
+
+For vintage photos with dust and scratches:
+
+```bash
+photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
+```
+
 ## Tips for Best Results
 
 1. **Scan Quality**: Use high-resolution scans (300 DPI or higher) for better detection
@@ -241,6 +276,7 @@ photo-splitter input.jpg -o output --min-area 50000
 3. **Background**: A uniform, light-colored background works best
 4. **Spacing**: Leave some space between photos on the scanner bed
 5. **Alignment**: Photos don't need to be perfectly aligned - rotation correction will handle small angles
+6. **Dust Removal**: For best results with old photos, enable `--dust-removal` to clean up dust spots and scratches with quality-optimized algorithms
 
 ## Troubleshooting
 

@@ -10,7 +10,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-from .detector import PhotoDetector
+from .detector import PhotoDetector, ROTATION_THRESHOLD_DEGREES
 from .location_identifier import LocationIdentifier
 
 
@@ -18,7 +18,8 @@ class PhotoSplitterCLI:
     """Interactive CLI for splitting and aligning photos"""
     
     def __init__(self, input_path: str, output_dir: str, auto_rotate: bool = True,
-                 interactive: bool = True, identify_location: bool = False,
+                 interactive: bool = True, dust_removal: bool = False,
+                 identify_location: bool = False,
                  ollama_url: str = "http://localhost:11434", ollama_model: str = "qwen2.5-vl:32b"):
         """
         Initialize the CLI
@@ -28,6 +29,7 @@ class PhotoSplitterCLI:
             output_dir: Directory to save output images
             auto_rotate: Whether to automatically detect and fix rotation
             interactive: Whether to show interactive validation
+            dust_removal: Whether to apply dust removal to extracted photos
             identify_location: Whether to identify photo locations using Ollama
             ollama_url: URL of the Ollama API server
             ollama_model: Name of the Ollama model to use
@@ -36,8 +38,9 @@ class PhotoSplitterCLI:
         self.output_dir = Path(output_dir)
         self.auto_rotate = auto_rotate
         self.interactive = interactive
+        self.dust_removal = dust_removal
         self.identify_location = identify_location
-        self.detector = PhotoDetector()
+        self.detector = PhotoDetector(dust_removal=dust_removal)
         self.location_identifier = None
         
         # Initialize location identifier if requested
@@ -93,6 +96,10 @@ class PhotoSplitterCLI:
             try:
                 # Extract photo
                 photo = self.detector.extract_photo(str(image_path), contour, bbox)
+                
+                # Apply dust removal if enabled
+                if self.dust_removal:
+                    photo = self.detector.remove_dust(photo)
                 
                 # Auto-rotate if enabled
                 if self.auto_rotate:
@@ -232,6 +239,7 @@ class PhotoSplitterCLI:
         print(f"Found {len(image_files)} image(s) to process")
         print(f"Output directory: {self.output_dir}")
         print(f"Auto-rotate: {'enabled' if self.auto_rotate else 'disabled'}")
+        print(f"Dust removal: {'enabled' if self.dust_removal else 'disabled'}")
         print(f"Interactive mode: {'enabled' if self.interactive else 'disabled'}")
         print(f"Location identification: {'enabled' if self.identify_location else 'disabled'}")
         
@@ -264,6 +272,9 @@ Examples:
   # Process without auto-rotation
   photo-splitter input.jpg -o output_photos --no-rotate
   
+  # Process with dust removal enabled
+  photo-splitter input.jpg -o output_photos --dust-removal
+  
   # Process with location identification using Ollama
   photo-splitter input.jpg -o output_photos --identify-location
         """
@@ -277,6 +288,8 @@ Examples:
                        help='Disable automatic rotation detection and correction')
     parser.add_argument('--no-interactive', action='store_true',
                        help='Disable interactive preview and confirmation')
+    parser.add_argument('--dust-removal', action='store_true',
+                       help='Enable dust and scratch removal from photos')
     parser.add_argument('--min-area', type=int, default=10000,
                        help='Minimum area for photo detection (default: 10000)')
     parser.add_argument('--identify-location', action='store_true',
@@ -294,6 +307,7 @@ Examples:
         output_dir=args.output,
         auto_rotate=not args.no_rotate,
         interactive=not args.no_interactive,
+        dust_removal=args.dust_removal,
         identify_location=args.identify_location,
         ollama_url=args.ollama_url,
         ollama_model=args.ollama_model
