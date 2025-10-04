@@ -7,6 +7,10 @@ import numpy as np
 from typing import List, Tuple, Optional
 
 
+# Constants
+ROTATION_THRESHOLD_DEGREES = 0.5  # Minimum rotation angle to apply correction
+
+
 class PhotoDetector:
     """Detects individual photos in a scanned image"""
     
@@ -23,7 +27,7 @@ class PhotoDetector:
         self.edge_threshold1 = edge_threshold1
         self.edge_threshold2 = edge_threshold2
     
-    def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
+    def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, Tuple[int, int, int, int]]]:
         """
         Detect individual photos in a scanned image
         
@@ -31,7 +35,8 @@ class PhotoDetector:
             image_path: Path to the scanned image
             
         Returns:
-            List of tuples (contour, bounding_box) for each detected photo
+            List of tuples (contour, bounding_box) for each detected photo.
+            Each bounding_box is a tuple of (x, y, w, h).
         """
         # Read the image
         image = cv2.imread(image_path)
@@ -86,6 +91,9 @@ class PhotoDetector:
             Extracted photo as numpy array
         """
         image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not read image from {image_path}")
+        
         x, y, w, h = bounding_box
         
         # Extract the region
@@ -141,7 +149,7 @@ class PhotoDetector:
         Returns:
             Rotated image
         """
-        if abs(angle) < 0.5:  # Don't rotate if angle is very small
+        if abs(angle) < ROTATION_THRESHOLD_DEGREES:  # Don't rotate if angle is very small
             return image
         
         h, w = image.shape[:2]

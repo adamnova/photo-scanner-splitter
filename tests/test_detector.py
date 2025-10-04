@@ -80,6 +80,14 @@ class TestPhotoDetector(unittest.TestCase):
         self.assertEqual(extracted.shape[0], 300)  # height
         self.assertEqual(extracted.shape[1], 300)  # width
     
+    def test_extract_photo_invalid_path(self):
+        """Test that extract_photo raises error for invalid image path"""
+        bbox = (100, 100, 300, 300)
+        contour = np.array([[100, 100], [400, 100], [400, 400], [100, 400]])
+        
+        with self.assertRaises(ValueError):
+            self.detector.extract_photo("/nonexistent/path.jpg", contour, bbox)
+    
     def test_detect_rotation_no_rotation(self):
         """Test rotation detection on non-rotated image"""
         # Create a simple rectangular image
