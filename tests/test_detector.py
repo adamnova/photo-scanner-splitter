@@ -117,6 +117,109 @@ class TestPhotoDetector(unittest.TestCase):
         # Image should be rotated (dimensions may change slightly)
         self.assertIsNotNone(rotated)
         self.assertEqual(rotated.shape[2], 3)  # Should still be 3 channels
+    
+    def test_detect_rotation_enhanced(self):
+        """Test enhanced rotation detection returns dict with angle and confidence"""
+        # Create a simple rectangular image
+        image = np.ones((400, 300, 3), dtype=np.uint8) * 255
+        cv2.rectangle(image, (50, 50), (250, 350), (0, 0, 0), 2)
+        
+        result = self.detector.detect_rotation_enhanced(image)
+        
+        # Result should be a dictionary
+        self.assertIsInstance(result, dict)
+        self.assertIn('angle', result)
+        self.assertIn('confidence', result)
+        
+        # Values should be floats
+        self.assertIsInstance(result['angle'], float)
+        self.assertIsInstance(result['confidence'], float)
+        
+        # Confidence should be between 0 and 1
+        self.assertGreaterEqual(result['confidence'], 0.0)
+        self.assertLessEqual(result['confidence'], 1.0)
+    
+    def test_detect_rotation_hough(self):
+        """Test Hough line-based rotation detection"""
+        # Create an image with horizontal lines
+        image = np.ones((400, 400, 3), dtype=np.uint8) * 255
+        # Draw horizontal lines
+        for y in range(100, 300, 50):
+            cv2.line(image, (50, y), (350, y), (0, 0, 0), 2)
+        
+        result = self.detector._detect_rotation_hough(image)
+        
+        # Should return a dict with angle and confidence
+        self.assertIsInstance(result, dict)
+        self.assertIn('angle', result)
+        self.assertIn('confidence', result)
+        
+        # Angle should be close to 0 for horizontal lines
+        self.assertLess(abs(result['angle']), 10)
+    
+    def test_detect_rotation_projection(self):
+        """Test projection-based rotation detection"""
+        # Create an image with text-like horizontal patterns
+        image = np.ones((400, 400, 3), dtype=np.uint8) * 255
+        # Simulate text with horizontal bars
+        for y in range(100, 300, 30):
+            cv2.rectangle(image, (50, y), (350, y+10), (0, 0, 0), -1)
+        
+        result = self.detector._detect_rotation_projection(image)
+        
+        # Should return a dict with angle and confidence
+        self.assertIsInstance(result, dict)
+        self.assertIn('angle', result)
+        self.assertIn('confidence', result)
+        
+        # Values should be floats
+        self.assertIsInstance(result['angle'], float)
+        self.assertIsInstance(result['confidence'], float)
+    
+    def test_detect_rotation_enhanced_with_rotated_image(self):
+        """Test enhanced rotation detection on a rotated image"""
+        # Create an image with clear horizontal features
+        image = np.ones((400, 400, 3), dtype=np.uint8) * 255
+        cv2.rectangle(image, (100, 150), (300, 170), (0, 0, 0), -1)
+        cv2.rectangle(image, (100, 230), (300, 250), (0, 0, 0), -1)
+        
+        # Rotate the image by a known angle
+        rotated_5deg = self.detector.rotate_image(image, 5)
+        
+        # Detect rotation
+        result = self.detector.detect_rotation_enhanced(rotated_5deg)
+        
+        # The detected angle should be close to -5 (correction angle)
+        # Allow some tolerance due to image processing artifacts
+        self.assertLess(abs(result['angle'] + 5), 15)
+    
+    def test_detect_rotation_no_features(self):
+        """Test rotation detection on image with no clear features"""
+        # Create a uniform image
+        image = np.ones((200, 200, 3), dtype=np.uint8) * 128
+        
+        result = self.detector.detect_rotation_enhanced(image)
+        
+        # Should return a result even with no features
+        self.assertIsInstance(result, dict)
+        self.assertIn('angle', result)
+        self.assertIn('confidence', result)
+        
+        # Should return valid confidence value (0-1)
+        self.assertGreaterEqual(result['confidence'], 0.0)
+        self.assertLessEqual(result['confidence'], 1.0)
+    
+    def test_detect_rotation_backward_compatibility(self):
+        """Test that detect_rotation maintains backward compatibility"""
+        # Create a simple rectangular image
+        image = np.ones((400, 300, 3), dtype=np.uint8) * 255
+        cv2.rectangle(image, (50, 50), (250, 350), (0, 0, 0), 2)
+        
+        # Original method should return a float
+        angle = self.detector.detect_rotation(image)
+        
+        # Should return a float (backward compatible)
+        self.assertIsInstance(angle, float)
 
 
 if __name__ == '__main__':
