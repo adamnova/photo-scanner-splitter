@@ -208,3 +208,6 @@ __marimo__/
 
 # Example outputs
 examples/output/
+
+# Package build artifacts
+*.egg-info/
