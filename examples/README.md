@@ -45,6 +45,18 @@ Process with preview and confirmation for each photo:
 photo-splitter examples/sample_scan.jpg -o examples/output
 ```
 
+### With Location Identification
+
+Process with AI-powered location identification (requires Ollama):
+
+```bash
+# Make sure Ollama is running first
+ollama pull qwen2.5-vl:32b
+
+# Then run the splitter with location identification
+photo-splitter examples/sample_scan.jpg -o examples/output --no-interactive --identify-location
+```
+
 ## Output
 
 The extracted and aligned photos will be saved in the `examples/output/` directory as:
@@ -53,3 +65,8 @@ The extracted and aligned photos will be saved in the `examples/output/` directo
 - `sample_scan_photo_3.jpg`
 
 Each photo will be automatically rotated to correct orientation.
+
+When location identification is enabled, you'll also get metadata files:
+- `sample_scan_photo_1_location.txt`
+- `sample_scan_photo_2_location.txt`
+- `sample_scan_photo_3_location.txt`
