@@ -5,13 +5,12 @@ Command-line interface for photo splitter
 import argparse
 import sys
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 import cv2
 import numpy as np
 
-from .detector import PhotoDetector
-from .detector import PhotoDetector, ROTATION_THRESHOLD_DEGREES
+from .detector import ROTATION_THRESHOLD_DEGREES, PhotoDetector
 from .location_identifier import LocationIdentifier
 
 
@@ -19,13 +18,16 @@ class PhotoSplitterCLI:
     """Interactive CLI for splitting and aligning photos"""
 
     def __init__(
-        self, input_path: str, output_dir: str, auto_rotate: bool = True, interactive: bool = True
+        self,
+        input_path: str,
+        output_dir: str,
+        auto_rotate: bool = True,
+        interactive: bool = True,
+        dust_removal: bool = False,
+        identify_location: bool = False,
+        ollama_url: str = "http://localhost:11434",
+        ollama_model: str = "qwen2.5-vl:32b",
     ):
-    
-    def __init__(self, input_path: str, output_dir: str, auto_rotate: bool = True,
-                 interactive: bool = True, dust_removal: bool = False,
-                 identify_location: bool = False,
-                 ollama_url: str = "http://localhost:11434", ollama_model: str = "qwen2.5-vl:32b"):
         """
         Initialize the CLI
 
@@ -45,24 +47,21 @@ class PhotoSplitterCLI:
         self.interactive = interactive
         self.dust_removal = dust_removal
         self.identify_location = identify_location
-        self.detector = PhotoDetector()
-
         self.detector = PhotoDetector(dust_removal=dust_removal)
         self.location_identifier = None
-        
+
         # Initialize location identifier if requested
         if self.identify_location:
             try:
                 self.location_identifier = LocationIdentifier(
-                    ollama_url=ollama_url,
-                    model=ollama_model
+                    ollama_url=ollama_url, model=ollama_model
                 )
                 print(f"Location identification enabled using model: {ollama_model}")
             except Exception as e:
                 print(f"Warning: Could not initialize location identifier: {e}")
                 print("Continuing without location identification...")
                 self.identify_location = False
-        
+
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -104,11 +103,10 @@ class PhotoSplitterCLI:
                 # Extract photo
                 photo = self.detector.extract_photo(str(image_path), contour, bbox)
 
-                
                 # Apply dust removal if enabled
                 if self.dust_removal:
                     photo = self.detector.remove_dust(photo)
-                
+
                 # Auto-rotate if enabled
                 if self.auto_rotate:
                     angle = self.detector.detect_rotation(photo)
@@ -116,23 +114,24 @@ class PhotoSplitterCLI:
                         print(f"  Photo {idx}: Detected rotation of {angle:.1f}°")
                         photo = self.detector.rotate_image(photo, -angle)
 
-                
                 # Identify location if enabled
                 location_info = None
                 if self.identify_location and self.location_identifier:
                     print(f"  Photo {idx}: Identifying location...")
                     try:
                         location_info = self.location_identifier.identify_location(photo)
-                        if location_info.get('location'):
-                            print(f"  Photo {idx}: Location: {location_info['location']} "
-                                  f"(Confidence: {location_info.get('confidence', 'unknown')})")
+                        if location_info.get("location"):
+                            print(
+                                f"  Photo {idx}: Location: {location_info['location']} "
+                                f"(Confidence: {location_info.get('confidence', 'unknown')})"
+                            )
                         else:
                             print(f"  Photo {idx}: Location could not be determined")
-                        if location_info.get('description'):
+                        if location_info.get("description"):
                             print(f"  Photo {idx}: {location_info['description']}")
                     except Exception as e:
                         print(f"  Photo {idx}: Error identifying location: {e}")
-                
+
                 # Show preview and get user confirmation if interactive
                 if self.interactive:
                     accepted = self._show_photo_preview(photo, idx, len(detected_photos))
@@ -143,19 +142,21 @@ class PhotoSplitterCLI:
                 # Save the photo
                 output_path = self.output_dir / f"{base_name}_photo_{idx}.jpg"
                 cv2.imwrite(str(output_path), photo)
-                
+
                 # Save location metadata if available
-                if location_info and (location_info.get('location') or location_info.get('description')):
+                if location_info and (
+                    location_info.get("location") or location_info.get("description")
+                ):
                     metadata_path = self.output_dir / f"{base_name}_photo_{idx}_location.txt"
-                    with open(metadata_path, 'w') as f:
-                        if location_info.get('location'):
+                    with open(metadata_path, "w") as f:
+                        if location_info.get("location"):
                             f.write(f"Location: {location_info['location']}\n")
-                        if location_info.get('confidence'):
+                        if location_info.get("confidence"):
                             f.write(f"Confidence: {location_info['confidence']}\n")
-                        if location_info.get('description'):
+                        if location_info.get("description"):
                             f.write(f"Description: {location_info['description']}\n")
                     print(f"  Saved metadata: {metadata_path.name}")
-                
+
                 print(f"  Saved: {output_path.name}")
                 saved_count += 1
 
@@ -172,7 +173,7 @@ class PhotoSplitterCLI:
         if image is None:
             print(f"Warning: Could not read image from {image_path}")
             return
-        
+
         preview = image.copy()
 
         for idx, (_contour, bbox) in enumerate(detected_photos, 1):
@@ -255,7 +256,7 @@ class PhotoSplitterCLI:
         print(f"Interactive mode: {'enabled' if self.interactive else 'disabled'}")
 
         print(f"Location identification: {'enabled' if self.identify_location else 'disabled'}")
-        
+
         # Process each image
         total_extracted = 0
         for image_file in image_files:
@@ -284,6 +285,12 @@ Examples:
 
   # Process without auto-rotation
   photo-splitter input.jpg -o output_photos --no-rotate
+
+  # Process with dust removal enabled
+  photo-splitter input.jpg -o output_photos --dust-removal
+
+  # Process with location identification using Ollama
+  photo-splitter input.jpg -o output_photos --identify-location
         """,
     )
 
@@ -305,35 +312,27 @@ Examples:
         default=10000,
         help="Minimum area for photo detection (default: 10000)",
     )
-
-  
-  # Process with dust removal enabled
-  photo-splitter input.jpg -o output_photos --dust-removal
-  
-  # Process with location identification using Ollama
-  photo-splitter input.jpg -o output_photos --identify-location
-        """
+    parser.add_argument(
+        "--dust-removal", action="store_true", help="Enable dust and scratch removal from photos"
     )
-    
-    parser.add_argument('input', type=str,
-                       help='Input image file or directory containing scans')
-    parser.add_argument('-o', '--output', type=str, required=True,
-                       help='Output directory for extracted photos')
-    parser.add_argument('--no-rotate', action='store_true',
-                       help='Disable automatic rotation detection and correction')
-    parser.add_argument('--no-interactive', action='store_true',
-                       help='Disable interactive preview and confirmation')
-    parser.add_argument('--dust-removal', action='store_true',
-                       help='Enable dust and scratch removal from photos')
-    parser.add_argument('--min-area', type=int, default=10000,
-                       help='Minimum area for photo detection (default: 10000)')
-    parser.add_argument('--identify-location', action='store_true',
-                       help='Enable location identification using Ollama LLM')
-    parser.add_argument('--ollama-url', type=str, default='http://localhost:11434',
-                       help='URL of the Ollama API server (default: http://localhost:11434)')
-    parser.add_argument('--ollama-model', type=str, default='qwen2.5-vl:32b',
-                       help='Ollama model to use for location identification (default: qwen2.5-vl:32b)')
-    
+    parser.add_argument(
+        "--identify-location",
+        action="store_true",
+        help="Enable location identification using Ollama LLM",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        type=str,
+        default="http://localhost:11434",
+        help="URL of the Ollama API server (default: http://localhost:11434)",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        type=str,
+        default="qwen2.5-vl:32b",
+        help="Ollama model to use for location identification (default: qwen2.5-vl:32b)",
+    )
+
     args = parser.parse_args()
 
     # Create and run CLI
@@ -345,7 +344,7 @@ Examples:
         dust_removal=args.dust_removal,
         identify_location=args.identify_location,
         ollama_url=args.ollama_url,
-        ollama_model=args.ollama_model
+        ollama_model=args.ollama_model,
     )
 
     # Update detector min_area if specified

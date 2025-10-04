@@ -2,14 +2,12 @@
 Core photo detection and processing module
 """
 
-from typing import List, Tuple
+import os
+import urllib.request
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
-from typing import List, Tuple, Optional, Dict
-import os
-import urllib.request
-
 
 # Constants
 ROTATION_THRESHOLD_DEGREES = 0.5  # Minimum rotation angle to apply correction
@@ -19,11 +17,13 @@ class PhotoDetector:
     """Detects individual photos in a scanned image"""
 
     def __init__(
-        self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150
+        self,
+        min_area: int = 10000,
+        edge_threshold1: int = 50,
+        edge_threshold2: int = 150,
+        dust_removal: bool = False,
+        face_confidence: float = 0.5,
     ):
-    
-    def __init__(self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150,
-                 dust_removal: bool = False, face_confidence: float = 0.5):
         """
         Initialize the photo detector
 
@@ -37,13 +37,11 @@ class PhotoDetector:
         self.min_area = min_area
         self.edge_threshold1 = edge_threshold1
         self.edge_threshold2 = edge_threshold2
-
-    def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
         self.dust_removal = dust_removal
         self.face_confidence = face_confidence
         self.face_net = None
         self._load_face_detector()
-    
+
     def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, Tuple[int, int, int, int]]]:
         """
         Detect individual photos in a scanned image
@@ -111,7 +109,7 @@ class PhotoDetector:
         image = cv2.imread(image_path)
         if image is None:
             raise ValueError(f"Could not read image from {image_path}")
-        
+
         x, y, w, h = bounding_box
 
         # Extract the region
@@ -124,7 +122,7 @@ class PhotoDetector:
         Detect the rotation angle of a photo
 
         Detect the rotation angle of a photo using multiple strategies
-        
+
         Args:
             image: Input image as numpy array
 
@@ -133,64 +131,61 @@ class PhotoDetector:
         """
         # Use the enhanced rotation detection method
         result = self.detect_rotation_enhanced(image)
-        return result['angle']
-    
+        return result["angle"]
+
     def detect_rotation_enhanced(self, image: np.ndarray) -> dict:
         """
         Enhanced rotation detection with confidence scoring
-        
+
         Uses multiple strategies to reliably detect rotation:
         1. Hough line detection for strong edges
         2. Projection profile analysis for text-like content
         3. Variance-based detection
-        
+
         Args:
             image: Input image as numpy array
-            
+
         Returns:
             Dictionary with 'angle' (float) and 'confidence' (float 0-1)
         """
         # Strategy 1: Hough line detection (existing method)
         hough_result = self._detect_rotation_hough(image)
-        
+
         # Strategy 2: Projection profile analysis
         projection_result = self._detect_rotation_projection(image)
-        
+
         # Combine results with weighting based on confidence
         angles = []
         weights = []
-        
-        if hough_result['confidence'] > 0.1:
-            angles.append(hough_result['angle'])
-            weights.append(hough_result['confidence'])
-        
-        if projection_result['confidence'] > 0.1:
-            angles.append(projection_result['angle'])
-            weights.append(projection_result['confidence'])
-        
+
+        if hough_result["confidence"] > 0.1:
+            angles.append(hough_result["angle"])
+            weights.append(hough_result["confidence"])
+
+        if projection_result["confidence"] > 0.1:
+            angles.append(projection_result["angle"])
+            weights.append(projection_result["confidence"])
+
         if not angles:
-            return {'angle': 0.0, 'confidence': 0.0}
-        
+            return {"angle": 0.0, "confidence": 0.0}
+
         # Weighted average of angles
         total_weight = sum(weights)
         if total_weight == 0:
-            return {'angle': 0.0, 'confidence': 0.0}
-        
+            return {"angle": 0.0, "confidence": 0.0}
+
         weighted_angle = sum(a * w for a, w in zip(angles, weights)) / total_weight
         avg_confidence = total_weight / len(weights)
-        
-        return {
-            'angle': float(weighted_angle),
-            'confidence': float(min(1.0, avg_confidence))
-        }
-    
+
+        return {"angle": float(weighted_angle), "confidence": float(min(1.0, avg_confidence))}
+
     def _detect_rotation_hough(self, image: np.ndarray) -> dict:
         """
         Detect rotation using Hough line transform
-        
+
         Args:
             image: Input image as numpy array
-            
+
         Returns:
             Dictionary with 'angle' and 'confidence'
         """
@@ -204,10 +199,8 @@ class PhotoDetector:
         lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
 
         if lines is None or len(lines) == 0:
-            return 0.0
+            return {"angle": 0.0, "confidence": 0.0}
 
-            return {'angle': 0.0, 'confidence': 0.0}
-        
         # Calculate dominant angle
         angles = []
         for line in lines:
@@ -220,45 +213,38 @@ class PhotoDetector:
                 angle -= 90
             angles.append(angle)
 
-        # Return median angle
-        return float(np.median(angles))
-
-        
         # Calculate median and confidence based on consistency
         median_angle = float(np.median(angles))
-        
+
         # Confidence based on how concentrated the angles are
         std_dev = np.std(angles)
         confidence = max(0.0, 1.0 - (std_dev / 45.0))
-        
-        return {
-            'angle': median_angle,
-            'confidence': float(confidence)
-        }
-    
+
+        return {"angle": median_angle, "confidence": float(confidence)}
+
     def _detect_rotation_projection(self, image: np.ndarray) -> dict:
         """
         Detect rotation using projection profile analysis
-        
+
         This method analyzes the variance in horizontal and vertical projections
         to detect text-like content and determine orientation.
-        
+
         Args:
             image: Input image as numpy array
-            
+
         Returns:
             Dictionary with 'angle' and 'confidence'
         """
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
+
         # Binarize the image
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
+
         # Test rotation angles
         test_angles = [0, 90, 180, 270]
         variances = []
-        
+
         for angle in test_angles:
             # Rotate image
             if angle == 0:
@@ -268,17 +254,17 @@ class PhotoDetector:
                 center = (w // 2, h // 2)
                 M = cv2.getRotationMatrix2D(center, angle, 1.0)
                 rotated = cv2.warpAffine(binary, M, (w, h))
-            
+
             # Calculate horizontal projection (sum of each row)
             h_projection = np.sum(rotated, axis=1)
             # Calculate variance of projection
             variance = np.var(h_projection)
             variances.append(variance)
-        
+
         # The correct orientation should have maximum variance in horizontal projection
         max_variance_idx = np.argmax(variances)
         detected_angle = test_angles[max_variance_idx]
-        
+
         # Convert to rotation needed to correct
         if detected_angle == 0:
             correction_angle = 0.0
@@ -288,13 +274,13 @@ class PhotoDetector:
             correction_angle = 180.0
         else:  # 270
             correction_angle = 90.0
-        
+
         # Normalize to [-45, 45] range
         while correction_angle > 45:
             correction_angle -= 90
         while correction_angle < -45:
             correction_angle += 90
-        
+
         # Calculate confidence based on variance ratio
         max_var = variances[max_variance_idx]
         min_var = min(variances)
@@ -302,12 +288,9 @@ class PhotoDetector:
             confidence = min(1.0, (max_var - min_var) / max_var)
         else:
             confidence = 0.0
-        
-        return {
-            'angle': float(correction_angle),
-            'confidence': float(confidence)
-        }
-    
+
+        return {"angle": float(correction_angle), "confidence": float(confidence)}
+
     def rotate_image(self, image: np.ndarray, angle: float) -> np.ndarray:
         """
         Rotate an image by the given angle
@@ -349,99 +332,99 @@ class PhotoDetector:
         )
 
         return rotated
-    
+
     def remove_dust(self, image: np.ndarray) -> np.ndarray:
         """
         Remove dust and scratches from photos using state-of-the-art algorithms.
-        
+
         This method uses a quality-focused multi-stage approach:
         1. Bilateral filtering for edge-preserving noise reduction
         2. Non-local means denoising for superior quality
         3. Advanced morphological operations for precise dust detection
         4. Navier-Stokes inpainting for highest quality restoration
-        
+
         Args:
             image: Input image as numpy array
-            
+
         Returns:
             Cleaned image with dust removed (quality-optimized)
         """
         # Work with a copy to avoid modifying the original
         cleaned = image.copy()
-        
+
         # Stage 1: Edge-preserving bilateral filtering for noise reduction
         # Preserves edges while smoothing flat regions - critical for quality
         cleaned = cv2.bilateralFilter(cleaned, d=9, sigmaColor=75, sigmaSpace=75)
-        
+
         # Stage 2: Apply non-local means denoising with higher quality settings
         # Stronger filtering for better quality (slower but much better results)
         cleaned = cv2.fastNlMeansDenoisingColored(
-            cleaned, 
+            cleaned,
             None,
-            h=15,           # Increased filter strength for better noise removal
-            hColor=15,      # Increased color filter strength for better quality
-            templateWindowSize=9,    # Larger template for better quality
-            searchWindowSize=25      # Larger search area for superior results
+            h=15,  # Increased filter strength for better noise removal
+            hColor=15,  # Increased color filter strength for better quality
+            templateWindowSize=9,  # Larger template for better quality
+            searchWindowSize=25,  # Larger search area for superior results
         )
-        
+
         # Stage 3: Advanced dust detection using multiple kernel sizes
         # Convert to grayscale for dust detection
         gray = cv2.cvtColor(cleaned, cv2.COLOR_BGR2GRAY)
-        
+
         # Apply bilateral filter to grayscale for better dust detection
         gray_filtered = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
-        
+
         # Use multiple morphological operations with different kernel sizes
         # for more accurate dust detection
         dust_masks = []
-        
+
         # Detect small dust (3x3 kernel)
         kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         tophat_small = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_small)
         blackhat_small = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_small)
         dust_masks.append(cv2.add(tophat_small, blackhat_small))
-        
+
         # Detect medium dust (5x5 kernel)
         kernel_medium = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         tophat_medium = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_medium)
         blackhat_medium = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_medium)
         dust_masks.append(cv2.add(tophat_medium, blackhat_medium))
-        
+
         # Detect larger dust/scratches (7x7 kernel)
         kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
         tophat_large = cv2.morphologyEx(gray_filtered, cv2.MORPH_TOPHAT, kernel_large)
         blackhat_large = cv2.morphologyEx(gray_filtered, cv2.MORPH_BLACKHAT, kernel_large)
         dust_masks.append(cv2.add(tophat_large, blackhat_large))
-        
+
         # Combine all dust masks for comprehensive detection
         dust_mask = cv2.add(cv2.add(dust_masks[0], dust_masks[1]), dust_masks[2])
-        
+
         # Use adaptive thresholding for better mask quality
         dust_mask = cv2.adaptiveThreshold(
-            dust_mask, 
-            255, 
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY, 
+            dust_mask,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
             11,  # Block size
-            -2   # Constant subtracted from mean
+            -2,  # Constant subtracted from mean
         )
-        
+
         # Morphological operations to refine the mask
         kernel_refine = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         # Close small holes in dust regions
         dust_mask = cv2.morphologyEx(dust_mask, cv2.MORPH_CLOSE, kernel_refine, iterations=1)
         # Dilate slightly to ensure full dust coverage
         dust_mask = cv2.dilate(dust_mask, kernel_refine, iterations=1)
-        
+
         # Stage 4: High-quality inpainting using Navier-Stokes algorithm
         # This method is slower but produces superior quality results
         if np.sum(dust_mask) > 0:  # Only inpaint if dust was detected
             # Use Navier-Stokes inpainting for better quality
             # Larger radius for better context and smoother results
             cleaned = cv2.inpaint(cleaned, dust_mask, inpaintRadius=5, flags=cv2.INPAINT_NS)
-        
+
         return cleaned
-    
+
     def _load_face_detector(self):
         """
         Load the DNN-based face detection model
@@ -451,36 +434,36 @@ class PhotoDetector:
             # Define model URLs and paths
             model_dir = os.path.join(os.path.expanduser("~"), ".photo_splitter")
             os.makedirs(model_dir, exist_ok=True)
-            
+
             prototxt_path = os.path.join(model_dir, "deploy.prototxt")
             model_path = os.path.join(model_dir, "res10_300x300_ssd_iter_140000.caffemodel")
-            
+
             prototxt_url = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
             model_url = "https://github.com/opencv/opencv_3rdparty/raw/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
-            
+
             # Download prototxt if not exists
             if not os.path.exists(prototxt_path):
                 urllib.request.urlretrieve(prototxt_url, prototxt_path)
-            
+
             # Download model if not exists
             if not os.path.exists(model_path):
                 urllib.request.urlretrieve(model_url, model_path)
-            
+
             # Load the model
             self.face_net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
-            
+
         except Exception as e:
             # If loading fails, face detection will be disabled
             print(f"Warning: Could not load face detection model: {e}")
             self.face_net = None
-    
+
     def detect_faces(self, image: np.ndarray) -> List[Dict[str, any]]:
         """
         Detect faces in an image using deep learning
-        
+
         Args:
             image: Input image as numpy array (BGR format)
-            
+
         Returns:
             List of dictionaries containing face information:
             - 'bbox': Tuple of (x, y, width, height)
@@ -488,47 +471,43 @@ class PhotoDetector:
         """
         if self.face_net is None:
             return []
-        
+
         h, w = image.shape[:2]
-        
+
         # Prepare the image for DNN
         blob = cv2.dnn.blobFromImage(
-            cv2.resize(image, (300, 300)),
-            1.0,
-            (300, 300),
-            (104.0, 177.0, 123.0)
+            cv2.resize(image, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0)
         )
-        
+
         # Pass the blob through the network
         self.face_net.setInput(blob)
         detections = self.face_net.forward()
-        
+
         faces = []
-        
+
         # Process detections
         for i in range(detections.shape[2]):
             confidence = detections[0, 0, i, 2]
-            
+
             # Filter by confidence threshold
             if confidence > self.face_confidence:
                 # Get bounding box coordinates
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
-                
+
                 # Ensure coordinates are within image bounds
                 startX = max(0, startX)
                 startY = max(0, startY)
                 endX = min(w, endX)
                 endY = min(h, endY)
-                
+
                 width = endX - startX
                 height = endY - startY
-                
+
                 # Only include valid detections
                 if width > 0 and height > 0:
-                    faces.append({
-                        'bbox': (startX, startY, width, height),
-                        'confidence': float(confidence)
-                    })
-        
+                    faces.append(
+                        {"bbox": (startX, startY, width, height), "confidence": float(confidence)}
+                    )
+
         return faces
