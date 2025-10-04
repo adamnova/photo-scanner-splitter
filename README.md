@@ -147,11 +147,58 @@ photo-splitter input.jpg -o output --min-area 50000
 
 ## Development
 
+### Setting Up Development Environment
+
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone https://github.com/adamnova/photo-scanner-splitter.git
+   cd photo-scanner-splitter
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
+   pip install -e .
+   ```
+
+2. (Optional) Install pre-commit hooks:
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+
+### Code Quality
+
+This project maintains high code quality standards using:
+- **Black**: Code formatting (100 char line length)
+- **Ruff**: Fast linting and code quality checks
+- **mypy**: Static type checking
+- **Pre-commit**: Automated checks before commits
+
+Run quality checks:
+```bash
+# Format code
+black photo_splitter/ tests/
+
+# Run linter
+ruff check photo_splitter/ tests/ --fix
+
+# Type check
+mypy photo_splitter/
+```
+
 ### Running Tests
 
 ```bash
-python -m pytest tests/
+# Run all tests
+python -m unittest discover tests -v
+
+# Run with coverage
+pip install coverage
+coverage run -m unittest discover tests -v
+coverage report -m
 ```
+
+### Continuous Integration
+
+All pull requests are automatically tested with GitHub Actions on Python 3.8-3.12. Tests must pass and code must be formatted before merging.
 
 ### Project Structure
 
