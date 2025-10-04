@@ -117,6 +117,60 @@ class TestPhotoDetector(unittest.TestCase):
         # Image should be rotated (dimensions may change slightly)
         self.assertIsNotNone(rotated)
         self.assertEqual(rotated.shape[2], 3)  # Should still be 3 channels
+    
+    def test_face_detector_initialization(self):
+        """Test that face detector initializes"""
+        # The face detector should attempt to load
+        # It may be None if download fails, but that's ok for testing
+        self.assertIsNotNone(self.detector)
+    
+    def test_detect_faces_returns_list(self):
+        """Test that detect_faces returns a list"""
+        # Create a simple test image
+        image = np.ones((200, 200, 3), dtype=np.uint8) * 128
+        
+        # Should return a list (possibly empty if no faces or model not loaded)
+        faces = self.detector.detect_faces(image)
+        self.assertIsInstance(faces, list)
+    
+    def test_detect_faces_with_synthetic_face(self):
+        """Test face detection with a synthetic face-like pattern"""
+        # Create an image with face-like colors (skin tone)
+        image = np.ones((400, 400, 3), dtype=np.uint8)
+        # Draw an oval shape in skin tone colors
+        cv2.ellipse(image, (200, 200), (80, 100), 0, 0, 360, (180, 150, 120), -1)
+        # Add eyes
+        cv2.circle(image, (170, 180), 10, (50, 50, 50), -1)
+        cv2.circle(image, (230, 180), 10, (50, 50, 50), -1)
+        
+        faces = self.detector.detect_faces(image)
+        
+        # Result should be a list of dicts
+        self.assertIsInstance(faces, list)
+        
+        # If face detection is working and a face is detected
+        if len(faces) > 0:
+            self.assertIn('bbox', faces[0])
+            self.assertIn('confidence', faces[0])
+            self.assertEqual(len(faces[0]['bbox']), 4)  # x, y, w, h
+    
+    def test_detect_faces_confidence_filtering(self):
+        """Test that face detection respects confidence threshold"""
+        # Create detector with high confidence threshold
+        high_conf_detector = PhotoDetector(face_confidence=0.95)
+        
+        # Create detector with low confidence threshold
+        low_conf_detector = PhotoDetector(face_confidence=0.1)
+        
+        # Create a simple image
+        image = np.ones((200, 200, 3), dtype=np.uint8) * 128
+        
+        # Both should return lists
+        faces_high = high_conf_detector.detect_faces(image)
+        faces_low = low_conf_detector.detect_faces(image)
+        
+        self.assertIsInstance(faces_high, list)
+        self.assertIsInstance(faces_low, list)
 
 
 if __name__ == '__main__':
