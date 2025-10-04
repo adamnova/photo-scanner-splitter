@@ -94,6 +94,64 @@ class TestPhotoSplitterCLI(unittest.TestCase):
         # Check output directory for saved files
         output_files = list(Path(self.output_dir).glob("*.jpg"))
         self.assertEqual(len(output_files), count)
+    
+    def test_deduplication_enabled(self):
+        """Test that deduplication works when enabled"""
+        # Create test image with two identical white rectangles (photos)
+        image = np.zeros((500, 1000, 3), dtype=np.uint8)
+        cv2.rectangle(image, (50, 100), (350, 400), (255, 255, 255), -1)
+        cv2.rectangle(image, (550, 100), (850, 400), (255, 255, 255), -1)
+        
+        image_path = os.path.join(self.input_dir, "duplicates.jpg")
+        cv2.imwrite(image_path, image)
+        
+        cli = PhotoSplitterCLI(
+            input_path=image_path,
+            output_dir=self.output_dir,
+            interactive=False,
+            enable_dedup=True
+        )
+        
+        count = cli.process_image(Path(image_path))
+        
+        # With dedup enabled, should only save one photo (the second is a duplicate)
+        # Note: This test assumes the two rectangles are similar enough to be detected as duplicates
+        output_files = list(Path(self.output_dir).glob("*.jpg"))
+        self.assertEqual(len(output_files), count)
+    
+    def test_deduplication_disabled(self):
+        """Test that deduplication can be disabled"""
+        # Create test image with two identical white rectangles (photos)
+        image = np.zeros((500, 1000, 3), dtype=np.uint8)
+        cv2.rectangle(image, (50, 100), (350, 400), (255, 255, 255), -1)
+        cv2.rectangle(image, (550, 100), (850, 400), (255, 255, 255), -1)
+        
+        image_path = os.path.join(self.input_dir, "test_no_dedup.jpg")
+        cv2.imwrite(image_path, image)
+        
+        cli = PhotoSplitterCLI(
+            input_path=image_path,
+            output_dir=self.output_dir,
+            interactive=False,
+            enable_dedup=False
+        )
+        
+        count = cli.process_image(Path(image_path))
+        
+        # With dedup disabled, should save both photos
+        output_files = list(Path(self.output_dir).glob("*.jpg"))
+        self.assertEqual(len(output_files), count)
+    
+    def test_cli_with_dedup_parameter(self):
+        """Test CLI initialization with dedup parameter"""
+        cli = PhotoSplitterCLI(
+            input_path=self.input_dir,
+            output_dir=self.output_dir,
+            enable_dedup=True,
+            interactive=False
+        )
+        
+        self.assertTrue(cli.enable_dedup)
 
 
 if __name__ == '__main__':

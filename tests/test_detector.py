@@ -117,6 +117,116 @@ class TestPhotoDetector(unittest.TestCase):
         # Image should be rotated (dimensions may change slightly)
         self.assertIsNotNone(rotated)
         self.assertEqual(rotated.shape[2], 3)  # Should still be 3 channels
+    
+    def test_compute_image_hash(self):
+        """Test computing image hash"""
+        # Create a simple test image
+        image = np.ones((100, 100, 3), dtype=np.uint8) * 128
+        
+        # Compute hash
+        hash_value = self.detector.compute_image_hash(image)
+        
+        # Hash should be a non-empty string
+        self.assertIsNotNone(hash_value)
+        self.assertIsInstance(hash_value, str)
+        self.assertGreater(len(hash_value), 0)
+    
+    def test_compute_image_hash_consistency(self):
+        """Test that same image produces same hash"""
+        image = np.ones((100, 100, 3), dtype=np.uint8) * 150
+        
+        hash1 = self.detector.compute_image_hash(image)
+        hash2 = self.detector.compute_image_hash(image)
+        
+        # Same image should produce same hash
+        self.assertEqual(hash1, hash2)
+    
+    def test_is_duplicate_same_image(self):
+        """Test duplicate detection for identical images"""
+        image = np.ones((100, 100, 3), dtype=np.uint8) * 200
+        
+        # First image is not a duplicate
+        self.assertFalse(self.detector.is_duplicate(image))
+        
+        # Mark as seen
+        self.detector.mark_as_seen(image)
+        
+        # Same image should now be detected as duplicate
+        self.assertTrue(self.detector.is_duplicate(image))
+    
+    def test_is_duplicate_different_images(self):
+        """Test that different images are not marked as duplicates"""
+        # Create two clearly different images with patterns
+        image1 = np.ones((100, 100, 3), dtype=np.uint8) * 50
+        # Add distinct pattern to image1
+        cv2.rectangle(image1, (10, 10), (30, 30), (255, 0, 0), -1)
+        
+        image2 = np.ones((100, 100, 3), dtype=np.uint8) * 200
+        # Add different pattern to image2
+        cv2.circle(image2, (50, 50), 20, (0, 255, 0), -1)
+        
+        # Mark first image as seen
+        self.detector.mark_as_seen(image1)
+        
+        # Different image should not be a duplicate
+        self.assertFalse(self.detector.is_duplicate(image2))
+    
+    def test_is_duplicate_similar_images(self):
+        """Test duplicate detection for very similar images"""
+        # Create an image with some content
+        image1 = np.ones((100, 100, 3), dtype=np.uint8) * 128
+        cv2.rectangle(image1, (20, 20), (80, 80), (200, 150, 100), -1)
+        cv2.circle(image1, (50, 50), 15, (100, 200, 150), -1)
+        
+        # Create a near-identical copy with very minor differences (JPEG compression artifacts)
+        # Save and reload to simulate real-world scenario
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            temp_path = f.name
+        
+        try:
+            cv2.imwrite(temp_path, image1)
+            image2 = cv2.imread(temp_path)
+            
+            # Mark first image as seen
+            self.detector.mark_as_seen(image1)
+            
+            # Near-identical image (after JPEG compression) should be detected as duplicate
+            self.assertTrue(self.detector.is_duplicate(image2, hash_threshold=10))
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+    
+    def test_mark_as_seen(self):
+        """Test marking images as seen"""
+        image = np.ones((100, 100, 3), dtype=np.uint8) * 100
+        
+        # Initially, seen_hashes should be empty
+        self.assertEqual(len(self.detector.seen_hashes), 0)
+        
+        # Mark image as seen
+        self.detector.mark_as_seen(image)
+        
+        # seen_hashes should now contain one hash
+        self.assertEqual(len(self.detector.seen_hashes), 1)
+    
+    def test_reset_duplicate_tracking(self):
+        """Test resetting duplicate tracking"""
+        image = np.ones((100, 100, 3), dtype=np.uint8) * 150
+        
+        # Mark image as seen
+        self.detector.mark_as_seen(image)
+        self.assertEqual(len(self.detector.seen_hashes), 1)
+        
+        # Reset tracking
+        self.detector.reset_duplicate_tracking()
+        
+        # seen_hashes should be empty
+        self.assertEqual(len(self.detector.seen_hashes), 0)
+        
+        # Image should no longer be detected as duplicate
+        self.assertFalse(self.detector.is_duplicate(image))
 
 
 if __name__ == '__main__':

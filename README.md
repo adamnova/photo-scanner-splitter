@@ -6,6 +6,7 @@ A Python tool to automatically detect, extract, and align individual photos from
 
 - **Automatic Photo Detection**: Detects individual photos in scanned images using edge detection and contour analysis
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
+- **Duplicate Detection**: Optionally skip duplicate photos using perceptual hashing
 - **Interactive Validation**: Preview detected photos and confirm before saving
 - **Batch Processing**: Process single images or entire directories
 - **Flexible Configuration**: Customize detection sensitivity and processing options
@@ -66,6 +67,19 @@ If you want to keep the original orientation:
 photo-splitter input.jpg -o output_photos --no-rotate
 ```
 
+### Enable Duplicate Detection
+
+When processing multiple scans that may contain the same photos, enable deduplication to automatically skip duplicates:
+
+```bash
+photo-splitter scans/ -o output_photos --enable-dedup
+```
+
+This feature uses perceptual hashing to detect visually similar images. When a duplicate is detected, it will be skipped and not saved again. This is particularly useful when:
+- Processing multiple scans that may overlap
+- Re-scanning photos for better quality
+- Organizing large photo collections
+
 ### Advanced Options
 
 ```bash
@@ -75,6 +89,7 @@ photo-splitter input.jpg -o output_photos --min-area 20000
 - `--min-area`: Minimum area (in pixels) for a photo to be detected (default: 10000)
 - `--no-rotate`: Disable automatic rotation detection and correction
 - `--no-interactive`: Disable interactive preview and confirmation
+- `--enable-dedup`: Enable duplicate detection to skip saving duplicate photos
 
 ## How It Works
 
@@ -82,10 +97,11 @@ photo-splitter input.jpg -o output_photos --min-area 20000
 2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
 3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
 4. **Extraction**: Extracts each detected photo using its bounding box
-5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
-6. **Alignment**: Rotates the photo to correct orientation if needed
-7. **User Validation**: (if interactive mode) Shows preview for user confirmation
-8. **Saving**: Saves the processed photo with a descriptive filename
+5. **Duplicate Detection**: (if enabled) Computes perceptual hash and checks against previously processed photos
+6. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
+7. **Alignment**: Rotates the photo to correct orientation if needed
+8. **User Validation**: (if interactive mode) Shows preview for user confirmation
+9. **Saving**: Saves the processed photo with a descriptive filename
 
 ## Examples
 
@@ -118,6 +134,19 @@ If you're scanning larger photos and the default minimum area is too small:
 ```bash
 photo-splitter input.jpg -o output --min-area 50000
 ```
+
+### Example 4: Batch Processing with Deduplication
+
+Processing multiple scans that might contain duplicate photos:
+
+```bash
+photo-splitter multiple_scans/ -o all_photos --enable-dedup --no-interactive
+```
+
+This will:
+- Process all scans in the `multiple_scans/` directory
+- Automatically skip duplicate photos across all scans
+- Save only unique photos to `all_photos/`
 
 ## Tips for Best Results
 
@@ -180,3 +209,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Uses OpenCV for image processing
 - Built with Python and NumPy
+- Uses ImageHash library for perceptual hashing and duplicate detection

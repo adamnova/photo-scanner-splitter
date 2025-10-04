@@ -17,7 +17,7 @@ class PhotoSplitterCLI:
     """Interactive CLI for splitting and aligning photos"""
     
     def __init__(self, input_path: str, output_dir: str, auto_rotate: bool = True,
-                 interactive: bool = True):
+                 interactive: bool = True, enable_dedup: bool = False):
         """
         Initialize the CLI
         
@@ -26,11 +26,13 @@ class PhotoSplitterCLI:
             output_dir: Directory to save output images
             auto_rotate: Whether to automatically detect and fix rotation
             interactive: Whether to show interactive validation
+            enable_dedup: Whether to enable duplicate detection
         """
         self.input_path = Path(input_path)
         self.output_dir = Path(output_dir)
         self.auto_rotate = auto_rotate
         self.interactive = interactive
+        self.enable_dedup = enable_dedup
         self.detector = PhotoDetector()
         
         # Create output directory if it doesn't exist
@@ -74,6 +76,11 @@ class PhotoSplitterCLI:
                 # Extract photo
                 photo = self.detector.extract_photo(str(image_path), contour, bbox)
                 
+                # Check for duplicates if enabled
+                if self.enable_dedup and self.detector.is_duplicate(photo):
+                    print(f"  Photo {idx}: Skipped (duplicate)")
+                    continue
+                
                 # Auto-rotate if enabled
                 if self.auto_rotate:
                     angle = self.detector.detect_rotation(photo)
@@ -93,6 +100,10 @@ class PhotoSplitterCLI:
                 cv2.imwrite(str(output_path), photo)
                 print(f"  Saved: {output_path.name}")
                 saved_count += 1
+                
+                # Mark as seen if deduplication is enabled
+                if self.enable_dedup:
+                    self.detector.mark_as_seen(photo)
                 
             except Exception as e:
                 print(f"  Error processing photo {idx}: {e}")
@@ -180,6 +191,7 @@ class PhotoSplitterCLI:
         print(f"Output directory: {self.output_dir}")
         print(f"Auto-rotate: {'enabled' if self.auto_rotate else 'disabled'}")
         print(f"Interactive mode: {'enabled' if self.interactive else 'disabled'}")
+        print(f"Deduplication: {'enabled' if self.enable_dedup else 'disabled'}")
         
         # Process each image
         total_extracted = 0
@@ -220,6 +232,8 @@ Examples:
                        help='Disable automatic rotation detection and correction')
     parser.add_argument('--no-interactive', action='store_true',
                        help='Disable interactive preview and confirmation')
+    parser.add_argument('--enable-dedup', action='store_true',
+                       help='Enable duplicate detection to skip saving duplicate photos')
     parser.add_argument('--min-area', type=int, default=10000,
                        help='Minimum area for photo detection (default: 10000)')
     
@@ -230,7 +244,8 @@ Examples:
         input_path=args.input,
         output_dir=args.output,
         auto_rotate=not args.no_rotate,
-        interactive=not args.no_interactive
+        interactive=not args.no_interactive,
+        enable_dedup=args.enable_dedup
     )
     
     # Update detector min_area if specified

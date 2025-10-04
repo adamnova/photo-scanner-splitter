@@ -4,7 +4,9 @@ Core photo detection and processing module
 
 import cv2
 import numpy as np
-from typing import List, Tuple, Optional
+import imagehash
+from PIL import Image
+from typing import List, Tuple, Optional, Set
 
 
 class PhotoDetector:
@@ -22,6 +24,7 @@ class PhotoDetector:
         self.min_area = min_area
         self.edge_threshold1 = edge_threshold1
         self.edge_threshold2 = edge_threshold2
+        self.seen_hashes: Set[str] = set()  # Track seen image hashes for deduplication
     
     def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
         """
@@ -167,3 +170,66 @@ class PhotoDetector:
                                  borderValue=(255, 255, 255))
         
         return rotated
+    
+    def compute_image_hash(self, image: np.ndarray) -> str:
+        """
+        Compute perceptual hash of an image for deduplication
+        
+        Args:
+            image: Input image as numpy array
+            
+        Returns:
+            Hash string representation
+        """
+        # Convert from BGR (OpenCV) to RGB (PIL)
+        if len(image.shape) == 3 and image.shape[2] == 3:
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        else:
+            image_rgb = image
+        
+        # Convert to PIL Image
+        pil_image = Image.fromarray(image_rgb)
+        
+        # Compute perceptual hash (more robust to minor variations)
+        # Using phash which is more accurate than average_hash for photo deduplication
+        hash_value = imagehash.phash(pil_image, hash_size=8)
+        
+        return str(hash_value)
+    
+    def is_duplicate(self, image: np.ndarray, hash_threshold: int = 5) -> bool:
+        """
+        Check if an image is a duplicate of a previously seen image
+        
+        Args:
+            image: Input image as numpy array
+            hash_threshold: Maximum hash difference to consider images as duplicates (0-64)
+                          Lower values = stricter matching, 0 = exact match
+                          
+        Returns:
+            True if image is a duplicate, False otherwise
+        """
+        current_hash = imagehash.hex_to_hash(self.compute_image_hash(image))
+        
+        # Check against all seen hashes
+        for seen_hash_str in self.seen_hashes:
+            seen_hash = imagehash.hex_to_hash(seen_hash_str)
+            # Calculate Hamming distance between hashes
+            if current_hash - seen_hash <= hash_threshold:
+                return True
+        
+        return False
+    
+    def mark_as_seen(self, image: np.ndarray):
+        """
+        Mark an image as seen by adding its hash to the seen set
+        
+        Args:
+            image: Input image as numpy array
+        """
+        hash_str = self.compute_image_hash(image)
+        self.seen_hashes.add(hash_str)
+    
+    def reset_duplicate_tracking(self):
+        """Reset the duplicate tracking (clear all seen hashes)"""
+        self.seen_hashes.clear()
+
