@@ -94,6 +94,45 @@ class TestPhotoSplitterCLI(unittest.TestCase):
         # Check output directory for saved files
         output_files = list(Path(self.output_dir).glob("*.jpg"))
         self.assertEqual(len(output_files), count)
+    
+    def test_cli_with_dust_removal(self):
+        """Test CLI with dust removal enabled"""
+        cli = PhotoSplitterCLI(
+            input_path=self.input_dir,
+            output_dir=self.output_dir,
+            auto_rotate=True,
+            interactive=False,
+            dust_removal=True
+        )
+        
+        self.assertTrue(cli.dust_removal)
+        self.assertTrue(cli.detector.dust_removal)
+    
+    def test_process_image_with_dust_removal(self):
+        """Test processing image with dust removal enabled"""
+        # Create test image with a photo and dust
+        image = np.zeros((500, 500, 3), dtype=np.uint8)
+        cv2.rectangle(image, (100, 100), (400, 400), (200, 200, 200), -1)
+        
+        # Add some dust spots
+        for _ in range(10):
+            x, y = np.random.randint(120, 380, 2)
+            cv2.circle(image, (x, y), 1, (255, 255, 255), -1)
+        
+        image_path = os.path.join(self.input_dir, "dusty.jpg")
+        cv2.imwrite(image_path, image)
+        
+        cli = PhotoSplitterCLI(
+            input_path=image_path,
+            output_dir=self.output_dir,
+            interactive=False,
+            dust_removal=True
+        )
+        
+        count = cli.process_image(Path(image_path))
+        
+        # Should successfully process the image
+        self.assertGreaterEqual(count, 0)
 
 
 if __name__ == '__main__':

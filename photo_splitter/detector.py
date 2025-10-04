@@ -10,7 +10,8 @@ from typing import List, Tuple, Optional
 class PhotoDetector:
     """Detects individual photos in a scanned image"""
     
-    def __init__(self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150):
+    def __init__(self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150,
+                 dust_removal: bool = False):
         """
         Initialize the photo detector
         
@@ -18,10 +19,12 @@ class PhotoDetector:
             min_area: Minimum area for a photo to be considered valid (in pixels)
             edge_threshold1: First threshold for Canny edge detection
             edge_threshold2: Second threshold for Canny edge detection
+            dust_removal: Whether to apply dust removal to extracted photos
         """
         self.min_area = min_area
         self.edge_threshold1 = edge_threshold1
         self.edge_threshold2 = edge_threshold2
+        self.dust_removal = dust_removal
     
     def detect_photos(self, image_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
         """
@@ -167,3 +170,61 @@ class PhotoDetector:
                                  borderValue=(255, 255, 255))
         
         return rotated
+    
+    def remove_dust(self, image: np.ndarray) -> np.ndarray:
+        """
+        Remove dust and scratches from photos using state-of-the-art algorithms.
+        
+        This method uses a multi-stage approach:
+        1. Non-local means denoising for general noise reduction
+        2. Morphological operations to detect dust spots
+        3. Inpainting to remove detected dust and scratches
+        
+        Args:
+            image: Input image as numpy array
+            
+        Returns:
+            Cleaned image with dust removed
+        """
+        # Work with a copy to avoid modifying the original
+        cleaned = image.copy()
+        
+        # Stage 1: Apply non-local means denoising for general noise reduction
+        # This is effective for subtle dust and film grain
+        cleaned = cv2.fastNlMeansDenoisingColored(
+            cleaned, 
+            None,
+            h=10,           # Filter strength for luminance
+            hColor=10,      # Filter strength for color
+            templateWindowSize=7,
+            searchWindowSize=21
+        )
+        
+        # Stage 2: Detect dust spots using morphological operations
+        # Convert to grayscale for dust detection
+        gray = cv2.cvtColor(cleaned, cv2.COLOR_BGR2GRAY)
+        
+        # Apply morphological operations to identify small dark or bright spots (dust)
+        # Use top-hat transform to find bright spots
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel)
+        
+        # Use black-hat transform to find dark spots
+        blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel)
+        
+        # Combine both to get all dust spots
+        dust_mask = cv2.add(tophat, blackhat)
+        
+        # Threshold to create binary mask of dust
+        _, dust_mask = cv2.threshold(dust_mask, 10, 255, cv2.THRESH_BINARY)
+        
+        # Dilate the mask slightly to ensure we capture the full extent of dust spots
+        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        dust_mask = cv2.dilate(dust_mask, kernel_dilate, iterations=1)
+        
+        # Stage 3: Inpainting to remove detected dust
+        # Use Telea inpainting algorithm (fast and effective for small defects)
+        if np.sum(dust_mask) > 0:  # Only inpaint if dust was detected
+            cleaned = cv2.inpaint(cleaned, dust_mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
+        
+        return cleaned

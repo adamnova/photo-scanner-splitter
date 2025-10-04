@@ -17,7 +17,7 @@ class PhotoSplitterCLI:
     """Interactive CLI for splitting and aligning photos"""
     
     def __init__(self, input_path: str, output_dir: str, auto_rotate: bool = True,
-                 interactive: bool = True):
+                 interactive: bool = True, dust_removal: bool = False):
         """
         Initialize the CLI
         
@@ -26,12 +26,14 @@ class PhotoSplitterCLI:
             output_dir: Directory to save output images
             auto_rotate: Whether to automatically detect and fix rotation
             interactive: Whether to show interactive validation
+            dust_removal: Whether to apply dust removal to extracted photos
         """
         self.input_path = Path(input_path)
         self.output_dir = Path(output_dir)
         self.auto_rotate = auto_rotate
         self.interactive = interactive
-        self.detector = PhotoDetector()
+        self.dust_removal = dust_removal
+        self.detector = PhotoDetector(dust_removal=dust_removal)
         
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -73,6 +75,10 @@ class PhotoSplitterCLI:
             try:
                 # Extract photo
                 photo = self.detector.extract_photo(str(image_path), contour, bbox)
+                
+                # Apply dust removal if enabled
+                if self.dust_removal:
+                    photo = self.detector.remove_dust(photo)
                 
                 # Auto-rotate if enabled
                 if self.auto_rotate:
@@ -179,6 +185,7 @@ class PhotoSplitterCLI:
         print(f"Found {len(image_files)} image(s) to process")
         print(f"Output directory: {self.output_dir}")
         print(f"Auto-rotate: {'enabled' if self.auto_rotate else 'disabled'}")
+        print(f"Dust removal: {'enabled' if self.dust_removal else 'disabled'}")
         print(f"Interactive mode: {'enabled' if self.interactive else 'disabled'}")
         
         # Process each image
@@ -209,6 +216,9 @@ Examples:
   
   # Process without auto-rotation
   photo-splitter input.jpg -o output_photos --no-rotate
+  
+  # Process with dust removal enabled
+  photo-splitter input.jpg -o output_photos --dust-removal
         """
     )
     
@@ -220,6 +230,8 @@ Examples:
                        help='Disable automatic rotation detection and correction')
     parser.add_argument('--no-interactive', action='store_true',
                        help='Disable interactive preview and confirmation')
+    parser.add_argument('--dust-removal', action='store_true',
+                       help='Enable dust and scratch removal from photos')
     parser.add_argument('--min-area', type=int, default=10000,
                        help='Minimum area for photo detection (default: 10000)')
     
@@ -230,7 +242,8 @@ Examples:
         input_path=args.input,
         output_dir=args.output,
         auto_rotate=not args.no_rotate,
-        interactive=not args.no_interactive
+        interactive=not args.no_interactive,
+        dust_removal=args.dust_removal
     )
     
     # Update detector min_area if specified
