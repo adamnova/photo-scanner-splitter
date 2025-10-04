@@ -17,8 +17,7 @@ class PhotoDetector:
     """Detects individual photos in a scanned image"""
     
     def __init__(self, min_area: int = 10000, edge_threshold1: int = 50, edge_threshold2: int = 150,
-                 dust_removal: bool = False):
-                 face_confidence: float = 0.5):
+                 dust_removal: bool = False, face_confidence: float = 0.5):
         """
         Initialize the photo detector
         
@@ -421,6 +420,7 @@ class PhotoDetector:
             cleaned = cv2.inpaint(cleaned, dust_mask, inpaintRadius=5, flags=cv2.INPAINT_NS)
         
         return cleaned
+    
     def _load_face_detector(self):
         """
         Load the DNN-based face detection model
