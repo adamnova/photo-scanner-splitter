@@ -4,7 +4,7 @@ Image deduplication module with quality-focused comparison
 
 import hashlib
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -42,10 +42,9 @@ class ImageDeduplicator:
             Hexadecimal string representation of the perceptual hash
         """
         # Convert to grayscale if needed
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
+        gray = (
+            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
+        )
 
         # Resize to hash_size + 1 for DCT
         resized = cv2.resize(gray, (self.hash_size + 1, self.hash_size))
@@ -54,7 +53,7 @@ class ImageDeduplicator:
         dct = cv2.dct(np.float32(resized))
 
         # Keep only top-left corner (low frequencies)
-        dct_low = dct[:self.hash_size, :self.hash_size]
+        dct_low = dct[: self.hash_size, : self.hash_size]
 
         # Compute median
         median = np.median(dct_low)
@@ -85,10 +84,9 @@ class ImageDeduplicator:
         resolution_score = width * height
 
         # Convert to grayscale for sharpness calculation
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
+        gray = (
+            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
+        )
 
         # Compute sharpness using Laplacian variance
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)
@@ -99,9 +97,7 @@ class ImageDeduplicator:
 
         # Combine scores (weighted)
         # Resolution is most important, then sharpness, then brightness variance
-        quality_score = (
-            resolution_score * 0.0001 + sharpness_score * 10.0 + brightness_score * 0.5
-        )
+        quality_score = resolution_score * 0.0001 + sharpness_score * 10.0 + brightness_score * 0.5
 
         return quality_score
 
@@ -158,7 +154,7 @@ class ImageDeduplicator:
         unique_images = []
         duplicates_removed = []
 
-        for phash, group in hash_groups.items():
+        for _phash, group in hash_groups.items():
             # Sort by quality (descending)
             group_sorted = sorted(group, key=lambda x: x[2], reverse=True)
 
@@ -172,9 +168,7 @@ class ImageDeduplicator:
 
         return unique_images, duplicates_removed
 
-    def deduplicate_image_paths(
-        self, image_paths: List[Path]
-    ) -> Tuple[List[Path], List[Path]]:
+    def deduplicate_image_paths(self, image_paths: List[Path]) -> Tuple[List[Path], List[Path]]:
         """
         Deduplicate image files by path, keeping the highest quality version
 

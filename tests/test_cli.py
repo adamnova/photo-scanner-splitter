@@ -150,11 +150,11 @@ class TestPhotoSplitterCLI(unittest.TestCase):
         """Test processing with photo deduplication enabled"""
         # Create test image with duplicate photos (same content, different positions)
         image = np.zeros((600, 1000, 3), dtype=np.uint8)
-        
+
         # Add two identical photos
         photo_content = np.ones((200, 200, 3), dtype=np.uint8) * 128
         cv2.rectangle(photo_content, (50, 50), (150, 150), (255, 255, 255), 2)
-        
+
         # Place same content in two locations
         image[50:250, 50:250] = photo_content
         image[50:250, 550:750] = photo_content
@@ -179,4 +179,3 @@ class TestPhotoSplitterCLI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

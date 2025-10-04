@@ -186,7 +186,6 @@ class TestImageDeduplicator(unittest.TestCase):
 
     def test_deduplicate_image_paths_empty_list(self):
         """Test deduplication with empty path list"""
-        from pathlib import Path
 
         unique, duplicates = self.deduplicator.deduplicate_image_paths([])
 
@@ -213,7 +212,6 @@ class TestImageDeduplicator(unittest.TestCase):
         """Test deduplication with multiple duplicates of the same image"""
         # Create three identical images with different qualities
         image1 = np.ones((50, 50, 3), dtype=np.uint8) * 128
-        image2 = cv2.resize(image1, (100, 100))
         image3 = cv2.resize(image1, (150, 150))
 
         # Make them have identical content

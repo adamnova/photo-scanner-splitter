@@ -56,7 +56,9 @@ class PhotoSplitterCLI:
         self.deduplicate_photos = deduplicate_photos
         self.detector = PhotoDetector(dust_removal=dust_removal)
         self.location_identifier = None
-        self.deduplicator = ImageDeduplicator() if (deduplicate_source or deduplicate_photos) else None
+        self.deduplicator = (
+            ImageDeduplicator() if (deduplicate_source or deduplicate_photos) else None
+        )
 
         # Initialize location identifier if requested
         if self.identify_location:
@@ -130,14 +132,18 @@ class PhotoSplitterCLI:
         # Deduplicate extracted photos if enabled
         if self.deduplicate_photos and self.deduplicator and extracted_photos:
             print(f"  Deduplicating {len(extracted_photos)} extracted photo(s)...")
-            photos_to_process = [(f"{base_name}_photo_{idx}", photo) for idx, photo in extracted_photos]
+            photos_to_process = [
+                (f"{base_name}_photo_{idx}", photo) for idx, photo in extracted_photos
+            ]
             unique_photos, duplicates = self.deduplicator.deduplicate_images(photos_to_process)
-            
+
             if duplicates:
-                print(f"  Removed {len(duplicates)} duplicate photo(s) (kept higher quality versions)")
+                print(
+                    f"  Removed {len(duplicates)} duplicate photo(s) (kept higher quality versions)"
+                )
                 for dup in duplicates:
                     print(f"    - {dup}")
-            
+
             # Update extracted_photos with only unique ones
             # Parse back the idx from identifier
             extracted_photos = []
@@ -146,7 +152,7 @@ class PhotoSplitterCLI:
                 idx_str = identifier.split("_photo_")[-1]
                 idx = int(idx_str)
                 extracted_photos.append((idx, photo))
-        
+
         # Process and save each unique photo
         saved_count = 0
         for idx, photo in extracted_photos:
@@ -290,9 +296,11 @@ class PhotoSplitterCLI:
         if self.deduplicate_source and self.deduplicator and len(image_files) > 1:
             print(f"\nDeduplicating {len(image_files)} source image(s)...")
             unique_files, duplicate_files = self.deduplicator.deduplicate_image_paths(image_files)
-            
+
             if duplicate_files:
-                print(f"Found {len(duplicate_files)} duplicate source image(s) (keeping higher quality versions):")
+                print(
+                    f"Found {len(duplicate_files)} duplicate source image(s) (keeping higher quality versions):"
+                )
                 for dup in duplicate_files:
                     print(f"  - {dup.name}")
                 image_files = unique_files
