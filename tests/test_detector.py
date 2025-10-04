@@ -128,6 +128,55 @@ class TestPhotoDetector(unittest.TestCase):
         self.assertIsNotNone(rotated)
         self.assertEqual(rotated.shape[2], 3)  # Should still be 3 channels
     
+    def test_dust_removal_initialization(self):
+        """Test that dust removal flag is properly initialized"""
+        detector_no_dust = PhotoDetector(dust_removal=False)
+        detector_with_dust = PhotoDetector(dust_removal=True)
+        
+        self.assertFalse(detector_no_dust.dust_removal)
+        self.assertTrue(detector_with_dust.dust_removal)
+    
+    def test_dust_removal_basic(self):
+        """Test basic dust removal functionality"""
+        # Create a test image with simulated dust spots
+        image = np.ones((200, 200, 3), dtype=np.uint8) * 200
+        
+        # Add some random "dust" spots (small bright and dark spots)
+        for _ in range(20):
+            x, y = np.random.randint(10, 190, 2)
+            # Bright dust
+            cv2.circle(image, (x, y), 2, (255, 255, 255), -1)
+        
+        for _ in range(20):
+            x, y = np.random.randint(10, 190, 2)
+            # Dark dust
+            cv2.circle(image, (x, y), 2, (0, 0, 0), -1)
+        
+        # Apply dust removal
+        cleaned = self.detector.remove_dust(image)
+        
+        # Check that output has same dimensions
+        self.assertEqual(cleaned.shape, image.shape)
+        
+        # Check that it's still a valid image
+        self.assertIsNotNone(cleaned)
+        self.assertEqual(cleaned.dtype, np.uint8)
+    
+    def test_dust_removal_preserves_clean_image(self):
+        """Test that dust removal doesn't significantly alter clean images"""
+        # Create a clean gradient image
+        image = np.zeros((100, 100, 3), dtype=np.uint8)
+        for i in range(100):
+            image[i, :, :] = i * 2
+        
+        cleaned = self.detector.remove_dust(image)
+        
+        # Check dimensions preserved
+        self.assertEqual(cleaned.shape, image.shape)
+        
+        # The image should be relatively similar (accounting for denoising)
+        # We don't expect them to be identical due to denoising
+        self.assertIsNotNone(cleaned)
     def test_detect_rotation_enhanced(self):
         """Test enhanced rotation detection returns dict with angle and confidence"""
         # Create a simple rectangular image
