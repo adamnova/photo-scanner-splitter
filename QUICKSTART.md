@@ -75,6 +75,7 @@ photo-splitter my_scans/ -o all_photos --no-interactive
 
 - `--no-interactive`: Skip previews, save all detected photos
 - `--no-rotate`: Don't auto-correct rotation
+- `--dust-removal`: Clean up dust, scratches, and film grain from old photos
 - `--min-area 20000`: Only detect larger photos (adjust number as needed)
 
 ## Tips for Best Results
@@ -83,6 +84,7 @@ photo-splitter my_scans/ -o all_photos --no-interactive
 2. **Clean Background**: Use a clean, light-colored surface
 3. **Good Spacing**: Leave space between photos
 4. **Good Contrast**: Ensure photos stand out from the background
+5. **Old Photos**: Use `--dust-removal` for vintage photos with dust and scratches
 
 ## Getting Help
 

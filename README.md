@@ -6,6 +6,7 @@ A Python tool to automatically detect, extract, and align individual photos from
 
 - **Automatic Photo Detection**: Detects individual photos in scanned images using edge detection and contour analysis
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
+- **Dust and Scratch Removal**: State-of-the-art algorithms to clean up dust, scratches, and film grain from old photos
 - **Interactive Validation**: Preview detected photos and confirm before saving
 - **Batch Processing**: Process single images or entire directories
 - **Flexible Configuration**: Customize detection sensitivity and processing options
@@ -66,15 +67,29 @@ If you want to keep the original orientation:
 photo-splitter input.jpg -o output_photos --no-rotate
 ```
 
+### Enable Dust Removal
+
+Clean up old photos with dust, scratches, and film grain:
+
+```bash
+photo-splitter input.jpg -o output_photos --dust-removal
+```
+
+This feature uses advanced image processing algorithms including:
+- Non-local means denoising for subtle noise reduction
+- Morphological operations to detect dust spots
+- Inpainting to remove detected dust and scratches
+
 ### Advanced Options
 
 ```bash
-photo-splitter input.jpg -o output_photos --min-area 20000
+photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
 ```
 
 - `--min-area`: Minimum area (in pixels) for a photo to be detected (default: 10000)
 - `--no-rotate`: Disable automatic rotation detection and correction
 - `--no-interactive`: Disable interactive preview and confirmation
+- `--dust-removal`: Enable dust and scratch removal from photos
 
 ## How It Works
 
@@ -82,10 +97,14 @@ photo-splitter input.jpg -o output_photos --min-area 20000
 2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
 3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
 4. **Extraction**: Extracts each detected photo using its bounding box
-5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
-6. **Alignment**: Rotates the photo to correct orientation if needed
-7. **User Validation**: (if interactive mode) Shows preview for user confirmation
-8. **Saving**: Saves the processed photo with a descriptive filename
+5. **Dust Removal** (optional): Applies advanced algorithms to clean dust and scratches:
+   - Non-local means denoising for general noise reduction
+   - Morphological operations (top-hat and black-hat transforms) to detect dust spots
+   - Inpainting using Telea algorithm to remove detected defects
+6. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
+7. **Alignment**: Rotates the photo to correct orientation if needed
+8. **User Validation**: (if interactive mode) Shows preview for user confirmation
+9. **Saving**: Saves the processed photo with a descriptive filename
 
 ## Examples
 
@@ -119,6 +138,14 @@ If you're scanning larger photos and the default minimum area is too small:
 photo-splitter input.jpg -o output --min-area 50000
 ```
 
+### Example 4: Restoring Old Photos with Dust
+
+For vintage photos with dust and scratches:
+
+```bash
+photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
+```
+
 ## Tips for Best Results
 
 1. **Scan Quality**: Use high-resolution scans (300 DPI or higher) for better detection
@@ -126,6 +153,7 @@ photo-splitter input.jpg -o output --min-area 50000
 3. **Background**: A uniform, light-colored background works best
 4. **Spacing**: Leave some space between photos on the scanner bed
 5. **Alignment**: Photos don't need to be perfectly aligned - rotation correction will handle small angles
+6. **Dust Removal**: For best results with old photos, enable `--dust-removal` to clean up dust spots and scratches
 
 ## Troubleshooting
 
