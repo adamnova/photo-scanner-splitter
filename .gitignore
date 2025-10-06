@@ -211,3 +211,4 @@ examples/output/
 
 # Package build artifacts
 *.egg-info/
+actionlint
