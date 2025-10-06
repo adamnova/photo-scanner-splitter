@@ -45,9 +45,20 @@ class LocationIdentifier:
 
         Returns:
             Base64 encoded image string
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Encode image to JPEG format
-        _, buffer = cv2.imencode(".jpg", image)
+        success, buffer = cv2.imencode(".jpg", image)
+        if not success:
+            raise ValueError("Failed to encode image as JPEG")
+
         # Convert to base64
         image_base64 = base64.b64encode(buffer).decode("utf-8")
         return image_base64
@@ -66,7 +77,15 @@ class LocationIdentifier:
                 'confidence': Confidence level (high/medium/low) or None,
                 'description': Additional description from the model
             }
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Encode image
         image_base64 = self._encode_image(image)
 

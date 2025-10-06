@@ -45,7 +45,15 @@ class ImageDeduplicator:
 
         Returns:
             Hexadecimal string representation of the perceptual hash
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Convert to grayscale if needed
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
 
@@ -82,7 +90,15 @@ class ImageDeduplicator:
 
         Returns:
             Quality score (higher is better)
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         height, width = image.shape[:2]
         resolution_score = width * height
 

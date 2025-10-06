@@ -138,8 +138,6 @@ class PhotoDetector:
 
     def detect_rotation(self, image: np.ndarray) -> float:
         """
-        Detect the rotation angle of a photo
-
         Detect the rotation angle of a photo using multiple strategies
 
         Args:

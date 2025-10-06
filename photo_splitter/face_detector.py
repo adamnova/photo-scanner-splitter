@@ -67,7 +67,15 @@ class FaceDetector:
             List of dictionaries containing face information:
             - 'bbox': Tuple of (x, y, width, height)
             - 'confidence': Detection confidence score (0.0 to 1.0)
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         if self.face_net is None:
             return []
 
