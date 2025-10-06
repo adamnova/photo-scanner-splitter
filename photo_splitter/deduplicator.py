@@ -42,9 +42,7 @@ class ImageDeduplicator:
             Hexadecimal string representation of the perceptual hash
         """
         # Convert to grayscale if needed
-        gray = (
-            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-        )
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
 
         # Resize to hash_size + 1 for DCT
         resized = cv2.resize(gray, (self.hash_size + 1, self.hash_size))
@@ -84,9 +82,7 @@ class ImageDeduplicator:
         resolution_score = width * height
 
         # Convert to grayscale for sharpness calculation
-        gray = (
-            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
-        )
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
 
         # Compute sharpness using Laplacian variance
         laplacian = cv2.Laplacian(gray, cv2.CV_64F)

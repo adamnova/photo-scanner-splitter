@@ -11,7 +11,8 @@ import cv2
 import numpy as np
 
 from .deduplicator import ImageDeduplicator
-from .detector import ROTATION_THRESHOLD_DEGREES, PhotoDetector
+from .detector import PhotoDetector
+from .image_processing import ROTATION_THRESHOLD_DEGREES
 from .location_identifier import LocationIdentifier
 
 
