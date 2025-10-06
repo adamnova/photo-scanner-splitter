@@ -289,6 +289,17 @@ This runs:
 - Lint check (ruff)
 - Tests
 
+### Branch Protection
+
+**The repository requires all CI checks to pass before merging pull requests.**
+
+Branch protection rules enforce:
+- All status checks must pass (Code Quality Checks, Tests, Test Coverage)
+- At least one code review approval
+- Conversations must be resolved
+
+For administrators: See `.github/branch-protection.md` for configuration details.
+
 ### Debugging CI Failures
 
 1. **Format failures**:

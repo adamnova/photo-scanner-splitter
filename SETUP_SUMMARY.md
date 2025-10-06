@@ -254,7 +254,7 @@ Some issues may need manual fixes.
    make lint
    # Review and fix any remaining issues
    ```
-3. **Optional**: Enable branch protection rules requiring CI to pass
+3. **Enable branch protection rules** (Required): See `.github/branch-protection.md` for detailed instructions on making CI checks required for all PRs
 
 ### For Contributors
 

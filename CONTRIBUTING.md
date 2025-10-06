@@ -104,14 +104,18 @@ pre-commit run --all-files
 
 ## Continuous Integration
 
-The project uses GitHub Actions for CI/CD. All pull requests must pass:
+The project uses GitHub Actions for CI/CD. **All pull requests must pass the following required checks before merging:**
 - Code formatting checks (black)
 - Linting checks (ruff)
 - Type checking (mypy)
-- Unit tests on Python 3.8, 3.9, 3.10, 3.11, and 3.12
+- Unit tests on Python 3.11, 3.12, and 3.13
 - Test coverage reporting
 
+**These checks are enforced via branch protection rules.** Pull requests cannot be merged until all checks pass.
+
 You can view CI results in the "Actions" tab of the repository.
+
+For repository administrators: See `.github/branch-protection.md` for instructions on configuring required status checks.
 
 ## Code Guidelines
 
