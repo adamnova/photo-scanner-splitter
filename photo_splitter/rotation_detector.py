@@ -15,14 +15,20 @@ class RotationDetector:
         """
         Detect the rotation angle of a photo
 
-        Detect the rotation angle of a photo using multiple strategies
-
         Args:
             image: Input image as numpy array
 
         Returns:
             Rotation angle in degrees
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Use the enhanced rotation detection method
         result = self.detect_rotation_enhanced(image)
         return result["angle"]
@@ -34,14 +40,21 @@ class RotationDetector:
         Uses multiple strategies to reliably detect rotation:
         1. Hough line detection for strong edges
         2. Projection profile analysis for text-like content
-        3. Variance-based detection
 
         Args:
             image: Input image as numpy array
 
         Returns:
             Dictionary with 'angle' (float) and 'confidence' (float 0-1)
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Strategy 1: Hough line detection (existing method)
         hough_result = self._detect_rotation_hough(image)
 

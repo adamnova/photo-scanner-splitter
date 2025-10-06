@@ -51,7 +51,7 @@ class FaceDetector:
             # Load the model
             self.face_net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
 
-        except Exception as e:
+        except (OSError, urllib.error.URLError, cv2.error) as e:
             # If loading fails, face detection will be disabled
             print(f"Warning: Could not load face detection model: {e}")
             self.face_net = None

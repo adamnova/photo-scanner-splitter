@@ -51,7 +51,7 @@ def process_single_photo(
 
         return photo
 
-    except Exception as e:
+    except (ValueError, OSError, cv2.error) as e:
         print(f"  Error during photo processing: {e}")
         return None
 
@@ -86,7 +86,7 @@ def identify_photo_location(
         if location_info.get("description"):
             print(f"  Photo {photo_idx}: {location_info['description']}")
         return location_info
-    except Exception as e:
+    except (ConnectionError, ValueError, RuntimeError) as e:
         print(f"  Photo {photo_idx}: Error identifying location: {e}")
         return None
 
@@ -126,7 +126,7 @@ def save_photo_with_metadata(
 
         return True
 
-    except Exception as e:
+    except (OSError, cv2.error) as e:
         print(f"  Error saving photo: {e}")
         return False
 
