@@ -113,9 +113,13 @@ The project uses GitHub Actions for CI/CD. **All pull requests must pass the fol
 
 **These checks are enforced via branch protection rules.** Pull requests cannot be merged until all checks pass.
 
+**CI runs automatically on all pull requests** without requiring manual approval. See `.github/ACTIONS_CONFIGURATION.md` for details on how this is configured.
+
 You can view CI results in the "Actions" tab of the repository.
 
-For repository administrators: See `.github/branch-protection.md` for instructions on configuring required status checks.
+For repository administrators: 
+- See `.github/branch-protection.md` for instructions on configuring required status checks
+- See `.github/ACTIONS_CONFIGURATION.md` for instructions on configuring automatic workflow runs
 
 ## Code Guidelines
 

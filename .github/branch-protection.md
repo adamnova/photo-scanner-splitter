@@ -99,9 +99,27 @@ The CI workflow is already configured in `.github/workflows/ci.yml` to run on pu
 - **Tests**: Run on Python 3.11, 3.12, and 3.13
 - **Test Coverage**: Generate and upload coverage reports
 
+## Configuring Workflows to Run on All PRs Without Approval
+
+By default, GitHub Actions may require manual approval for workflows triggered by pull requests from first-time contributors or forks. To allow CI to run automatically on all pull requests:
+
+### Via GitHub UI
+
+1. Go to repository **Settings** → **Actions** → **General**
+2. Scroll down to **Fork pull request workflows from outside collaborators**
+3. Select **"Require approval for first-time contributors who are new to GitHub"** or **"Require approval for all outside collaborators"**
+   - Recommended: **"Require approval for first-time contributors who are new to GitHub"** (most balanced)
+   - For maximum automation: You can disable approval requirements, but this has security implications
+
+**Important Security Note**: Workflows from forks run with limited permissions by default (using `pull_request` event), which is safe. However, always review code from untrusted contributors before approving workflow runs.
+
+### Alternative: Using workflow_dispatch for Manual Testing
+
+The CI workflow also includes `workflow_dispatch` trigger, allowing manual workflow runs for testing purposes.
+
 ## Notes
 
-- The CI workflow runs automatically on all pull requests
+- The CI workflow runs automatically on all pull requests (once configured above)
 - All status checks must pass before a PR can be merged (once branch protection is enabled)
 - Repository administrators can configure these settings via the GitHub UI
 - The exact job names in the workflow match the required status checks listed above

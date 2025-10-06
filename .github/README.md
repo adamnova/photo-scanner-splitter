@@ -17,6 +17,11 @@ Documentation and configuration guide for setting up required status checks and 
 
 **Important**: Repository administrators should review and apply the branch protection settings documented in `branch-protection.md` to enforce CI requirements on all pull requests.
 
+### ACTIONS_CONFIGURATION.md
+Documentation for configuring GitHub Actions to run automatically on all pull requests without requiring manual approval.
+
+**Important**: Repository administrators should configure Actions settings to allow CI to run on all PRs as documented in `ACTIONS_CONFIGURATION.md`.
+
 ### verify-ci-setup.sh
 Verification script to check that CI is properly configured. Run with:
 ```bash

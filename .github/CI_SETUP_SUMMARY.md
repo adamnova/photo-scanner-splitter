@@ -94,13 +94,15 @@ Expected output:
 
 ### For Repository Administrators
 - **Action Required**: Apply branch protection rules via GitHub Settings
-- Use `.github/branch-protection.md` as a guide
+- **Action Required**: Configure Actions to run automatically on all PRs (see `.github/ACTIONS_CONFIGURATION.md`)
+- Use `.github/branch-protection.md` as a guide for branch protection
 - Can verify setup with `.github/verify-ci-setup.sh`
 
 ## What This Solves
 
 ✅ **CI runs in PRs**: Already configured, verified working  
 ✅ **CI is required**: Documentation and tools provided for administrators to enforce this  
+✅ **CI runs automatically**: Configuration guide for running on all PRs without approval (see `ACTIONS_CONFIGURATION.md`)  
 ✅ **Clear process**: Step-by-step guides for both setup and ongoing use  
 ✅ **Automated verification**: Script to validate the configuration  
 
@@ -117,9 +119,10 @@ Expected output:
 ## Next Steps
 
 1. ✅ CI workflow is already running on pull requests
-2. 🔲 Repository administrator needs to apply branch protection rules
-3. 🔲 Run verification script to confirm setup
-4. 🔲 Test with a sample pull request to verify enforcement
+2. 🔲 Repository administrator needs to configure Actions to run on all PRs (see `.github/ACTIONS_CONFIGURATION.md`)
+3. 🔲 Repository administrator needs to apply branch protection rules (see `.github/branch-protection.md`)
+4. 🔲 Run verification script to confirm setup
+5. 🔲 Test with a sample pull request to verify enforcement
 
 ## References
 
