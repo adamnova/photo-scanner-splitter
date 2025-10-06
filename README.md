@@ -482,6 +482,15 @@ photo-scanner-splitter/
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+**All pull requests must pass CI checks before merging:**
+- Code formatting (Black)
+- Linting (Ruff)
+- Type checking (mypy)
+- Unit tests on Python 3.11, 3.12, and 3.13
+- Test coverage
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines and [DEVELOPMENT.md](DEVELOPMENT.md) for development setup instructions.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
