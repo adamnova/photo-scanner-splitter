@@ -18,6 +18,11 @@ A Python tool to automatically detect, extract, and align individual photos from
 - **High-Quality Face Detection**: Detects people in images using deep learning-based face detection with ResNet SSD model
 - **Rotation Correction**: Automatically detects and corrects photo rotation for proper alignment
 - **Dust and Scratch Removal**: State-of-the-art algorithms to clean up dust, scratches, and film grain from old photos
+- **Quality-Focused Deduplication**: Automatically detect and remove duplicate images while keeping the highest quality version:
+  - Source image deduplication before processing
+  - Individual photo deduplication after extraction
+  - Perceptual hashing for robust duplicate detection
+  - Quality scoring based on resolution, sharpness, and brightness
 - **Location Identification**: Uses Ollama LLM to identify where photos were taken (optional)
 - **Interactive Validation**: Preview detected photos and confirm before saving
 - **Batch Processing**: Process single images or entire directories
@@ -94,6 +99,52 @@ This feature uses advanced image processing algorithms optimized for maximum qua
 - Multi-scale morphological operations to detect dust at different sizes
 - Adaptive thresholding for precise dust mask creation
 - Navier-Stokes inpainting for highest quality restoration
+
+### Deduplication
+
+Remove duplicate images while keeping the highest quality version:
+
+#### Source Image Deduplication
+
+Deduplicate scanned images before processing (useful when processing directories with duplicate scans):
+
+```bash
+photo-splitter scans/ -o output_photos --deduplicate-source
+```
+
+This will:
+1. Analyze all source images in the directory
+2. Identify duplicates using perceptual hashing
+3. Keep only the highest quality version of each duplicate set
+4. Process only the unique images
+
+#### Individual Photo Deduplication
+
+Deduplicate extracted photos after splitting (removes duplicate photos within a scan):
+
+```bash
+photo-splitter input.jpg -o output_photos --deduplicate-photos
+```
+
+This will:
+1. Extract all photos from the scan
+2. Identify duplicate photos using perceptual hashing
+3. Keep only the highest quality version of each duplicate
+4. Save only the unique photos
+
+#### Combined Deduplication
+
+Use both deduplication options together for comprehensive duplicate removal:
+
+```bash
+photo-splitter scans/ -o output_photos --deduplicate-source --deduplicate-photos
+```
+
+**Quality Scoring**: When duplicates are detected, the tool keeps the highest quality version based on:
+- Image resolution (width × height)
+- Sharpness (Laplacian variance)
+- Brightness distribution
+
 ### Location Identification with Ollama
 
 Identify the location where photos were taken using AI:
@@ -125,13 +176,15 @@ ollama pull qwen2.5-vl:32b
 ### Advanced Options
 
 ```bash
-photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal
+photo-splitter input.jpg -o output_photos --min-area 20000 --dust-removal --deduplicate-photos
 ```
 
 - `--min-area`: Minimum area (in pixels) for a photo to be detected (default: 10000)
 - `--no-rotate`: Disable automatic rotation detection and correction
 - `--no-interactive`: Disable interactive preview and confirmation
 - `--dust-removal`: Enable dust and scratch removal from photos
+- `--deduplicate-source`: Enable deduplication of source images before processing
+- `--deduplicate-photos`: Enable deduplication of extracted photos after splitting
 - `--identify-location`: Enable location identification using Ollama LLM
 - `--ollama-url`: URL of the Ollama API server (default: http://localhost:11434)
 - `--ollama-model`: Ollama model to use for location identification (default: qwen2.5-vl:32b)
@@ -196,30 +249,27 @@ This will create a sample image with face-like patterns, detect them, and save a
 
 ## How It Works
 
-1. **Edge Detection**: Uses Canny edge detection to find edges in the scanned image
-2. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
-3. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
-4. **Extraction**: Extracts each detected photo using its bounding box
-5. **Dust Removal** (optional): Applies quality-optimized algorithms to clean dust and scratches:
+1. **Source Deduplication** (optional): Removes duplicate source images before processing, keeping the highest quality version
+2. **Edge Detection**: Uses Canny edge detection to find edges in the scanned image
+3. **Contour Finding**: Identifies closed contours that likely represent photo boundaries
+4. **Filtering**: Filters contours by minimum area to exclude noise and small artifacts
+5. **Extraction**: Extracts each detected photo using its bounding box
+6. **Photo Deduplication** (optional): Removes duplicate extracted photos, keeping the highest quality version
+7. **Dust Removal** (optional): Applies quality-optimized algorithms to clean dust and scratches:
    - Bilateral filtering for edge-preserving noise reduction
    - Non-local means denoising with enhanced quality parameters
    - Multi-scale morphological operations (3x3, 5x5, 7x7 kernels) to detect dust at different sizes
    - Adaptive thresholding for precise dust detection
    - Navier-Stokes inpainting algorithm for superior quality restoration
-6. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
-7. **Alignment**: Rotates the photo to correct orientation if needed
-8. **User Validation**: (if interactive mode) Shows preview for user confirmation
-9. **Saving**: Saves the processed photo with a descriptive filename
-5. **Rotation Detection**: Analyzes edges to determine if the photo is rotated
-5. **Enhanced Rotation Detection**: Uses multiple strategies to reliably determine rotation:
+8. **Enhanced Rotation Detection**: Uses multiple strategies to reliably determine rotation:
    - Hough line detection analyzes dominant edge angles
    - Projection profile analysis detects text-like patterns
    - Confidence scoring ensures reliable results
    - Weighted combination of methods provides accurate angle estimation
-6. **Alignment**: Rotates the photo to correct orientation if needed
-7. **Location Identification**: (optional) Uses Ollama LLM to identify where the photo was taken
-8. **User Validation**: (if interactive mode) Shows preview for user confirmation
-9. **Saving**: Saves the processed photo with a descriptive filename and optional location metadata
+9. **Alignment**: Rotates the photo to correct orientation if needed
+10. **Location Identification** (optional): Uses Ollama LLM to identify where the photo was taken
+11. **User Validation** (if interactive mode): Shows preview for user confirmation
+12. **Saving**: Saves the processed photo with a descriptive filename and optional location metadata
 
 ## Examples
 
@@ -266,13 +316,28 @@ If you're scanning larger photos and the default minimum area is too small:
 photo-splitter input.jpg -o output --min-area 50000
 ```
 
-### Example 4: Restoring Old Photos with Dust
+### Example 5: Restoring Old Photos with Dust
 
 For vintage photos with dust and scratches:
 
 ```bash
 photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
 ```
+
+### Example 6: Processing with Deduplication
+
+When you have multiple scans of the same album pages or duplicate photos:
+
+```bash
+# Deduplicate source scans and extracted photos
+photo-splitter album_scans/ -o unique_photos --deduplicate-source --deduplicate-photos --no-interactive
+```
+
+This will:
+- Analyze all scans in the directory and remove duplicate scans (keeping highest quality)
+- Extract photos from each unique scan
+- Remove duplicate photos within and across scans (keeping highest quality)
+- Save only unique, high-quality photos
 
 ## Tips for Best Results
 
@@ -282,6 +347,7 @@ photo-splitter old_album_scan.jpg -o restored_photos --dust-removal
 4. **Spacing**: Leave some space between photos on the scanner bed
 5. **Alignment**: Photos don't need to be perfectly aligned - rotation correction will handle small angles
 6. **Dust Removal**: For best results with old photos, enable `--dust-removal` to clean up dust spots and scratches with quality-optimized algorithms
+7. **Deduplication**: When processing directories with potential duplicates, use `--deduplicate-source` to save processing time and `--deduplicate-photos` to ensure only unique photos are saved
 
 ## Troubleshooting
 

@@ -10,6 +10,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
+from .deduplicator import ImageDeduplicator
 from .detector import ROTATION_THRESHOLD_DEGREES, PhotoDetector
 from .location_identifier import LocationIdentifier
 
@@ -27,6 +28,8 @@ class PhotoSplitterCLI:
         identify_location: bool = False,
         ollama_url: str = "http://localhost:11434",
         ollama_model: str = "qwen2.5-vl:32b",
+        deduplicate_source: bool = False,
+        deduplicate_photos: bool = False,
     ):
         """
         Initialize the CLI
@@ -40,6 +43,8 @@ class PhotoSplitterCLI:
             identify_location: Whether to identify photo locations using Ollama
             ollama_url: URL of the Ollama API server
             ollama_model: Name of the Ollama model to use
+            deduplicate_source: Whether to deduplicate source images before processing
+            deduplicate_photos: Whether to deduplicate extracted photos
         """
         self.input_path = Path(input_path)
         self.output_dir = Path(output_dir)
@@ -47,8 +52,13 @@ class PhotoSplitterCLI:
         self.interactive = interactive
         self.dust_removal = dust_removal
         self.identify_location = identify_location
+        self.deduplicate_source = deduplicate_source
+        self.deduplicate_photos = deduplicate_photos
         self.detector = PhotoDetector(dust_removal=dust_removal)
         self.location_identifier = None
+        self.deduplicator = (
+            ImageDeduplicator() if (deduplicate_source or deduplicate_photos) else None
+        )
 
         # Initialize location identifier if requested
         if self.identify_location:
@@ -94,8 +104,8 @@ class PhotoSplitterCLI:
         if self.interactive:
             self._show_detection_preview(str(image_path), detected_photos)
 
-        # Extract and save each photo
-        saved_count = 0
+        # Extract all photos first
+        extracted_photos = []
         base_name = image_path.stem
 
         for idx, (contour, bbox) in enumerate(detected_photos, 1):
@@ -114,6 +124,39 @@ class PhotoSplitterCLI:
                         print(f"  Photo {idx}: Detected rotation of {angle:.1f}°")
                         photo = self.detector.rotate_image(photo, -angle)
 
+                extracted_photos.append((idx, photo))
+
+            except Exception as e:
+                print(f"  Error processing photo {idx}: {e}")
+
+        # Deduplicate extracted photos if enabled
+        if self.deduplicate_photos and self.deduplicator and extracted_photos:
+            print(f"  Deduplicating {len(extracted_photos)} extracted photo(s)...")
+            photos_to_process = [
+                (f"{base_name}_photo_{idx}", photo) for idx, photo in extracted_photos
+            ]
+            unique_photos, duplicates = self.deduplicator.deduplicate_images(photos_to_process)
+
+            if duplicates:
+                print(
+                    f"  Removed {len(duplicates)} duplicate photo(s) (kept higher quality versions)"
+                )
+                for dup in duplicates:
+                    print(f"    - {dup}")
+
+            # Update extracted_photos with only unique ones
+            # Parse back the idx from identifier
+            extracted_photos = []
+            for identifier, photo in unique_photos:
+                # Extract idx from identifier like "scan_photo_1"
+                idx_str = identifier.split("_photo_")[-1]
+                idx = int(idx_str)
+                extracted_photos.append((idx, photo))
+
+        # Process and save each unique photo
+        saved_count = 0
+        for idx, photo in extracted_photos:
+            try:
                 # Identify location if enabled
                 location_info = None
                 if self.identify_location and self.location_identifier:
@@ -134,7 +177,7 @@ class PhotoSplitterCLI:
 
                 # Show preview and get user confirmation if interactive
                 if self.interactive:
-                    accepted = self._show_photo_preview(photo, idx, len(detected_photos))
+                    accepted = self._show_photo_preview(photo, idx, len(extracted_photos))
                     if not accepted:
                         print(f"  Photo {idx}: Skipped by user")
                         continue
@@ -249,12 +292,28 @@ class PhotoSplitterCLI:
             print("No image files found")
             return
 
-        print(f"Found {len(image_files)} image(s) to process")
+        # Deduplicate source images if enabled
+        if self.deduplicate_source and self.deduplicator and len(image_files) > 1:
+            print(f"\nDeduplicating {len(image_files)} source image(s)...")
+            unique_files, duplicate_files = self.deduplicator.deduplicate_image_paths(image_files)
+
+            if duplicate_files:
+                print(
+                    f"Found {len(duplicate_files)} duplicate source image(s) (keeping higher quality versions):"
+                )
+                for dup in duplicate_files:
+                    print(f"  - {dup.name}")
+                image_files = unique_files
+            else:
+                print("No duplicate source images found")
+
+        print(f"\nFound {len(image_files)} image(s) to process")
         print(f"Output directory: {self.output_dir}")
         print(f"Auto-rotate: {'enabled' if self.auto_rotate else 'disabled'}")
         print(f"Dust removal: {'enabled' if self.dust_removal else 'disabled'}")
         print(f"Interactive mode: {'enabled' if self.interactive else 'disabled'}")
-
+        print(f"Source deduplication: {'enabled' if self.deduplicate_source else 'disabled'}")
+        print(f"Photo deduplication: {'enabled' if self.deduplicate_photos else 'disabled'}")
         print(f"Location identification: {'enabled' if self.identify_location else 'disabled'}")
 
         # Process each image
@@ -291,6 +350,12 @@ Examples:
 
   # Process with location identification using Ollama
   photo-splitter input.jpg -o output_photos --identify-location
+
+  # Process with source image deduplication
+  photo-splitter scans/ -o output_photos --deduplicate-source
+
+  # Process with photo deduplication (after extraction)
+  photo-splitter input.jpg -o output_photos --deduplicate-photos
         """,
     )
 
@@ -332,6 +397,16 @@ Examples:
         default="qwen2.5-vl:32b",
         help="Ollama model to use for location identification (default: qwen2.5-vl:32b)",
     )
+    parser.add_argument(
+        "--deduplicate-source",
+        action="store_true",
+        help="Enable deduplication of source images before processing (keeps highest quality)",
+    )
+    parser.add_argument(
+        "--deduplicate-photos",
+        action="store_true",
+        help="Enable deduplication of extracted photos (keeps highest quality)",
+    )
 
     args = parser.parse_args()
 
@@ -345,6 +420,8 @@ Examples:
         identify_location=args.identify_location,
         ollama_url=args.ollama_url,
         ollama_model=args.ollama_model,
+        deduplicate_source=args.deduplicate_source,
+        deduplicate_photos=args.deduplicate_photos,
     )
 
     # Update detector min_area if specified
