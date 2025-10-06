@@ -4,7 +4,7 @@ Face detection module using deep learning
 
 import os
 import urllib.request
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import cv2
 import numpy as np
@@ -56,7 +56,7 @@ class FaceDetector:
             print(f"Warning: Could not load face detection model: {e}")
             self.face_net = None
 
-    def detect_faces(self, image: np.ndarray) -> List[Dict[str, any]]:
+    def detect_faces(self, image: np.ndarray) -> List[Dict[str, Any]]:
         """
         Detect faces in an image using deep learning
 

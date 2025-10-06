@@ -175,18 +175,27 @@ You can view CI results in the "Actions" tab of the repository.
 photo-scanner-splitter/
 ├── photo_splitter/
 │   ├── __init__.py
-│   ├── detector.py      # Core detection and processing logic
-│   └── cli.py          # Command-line interface
+│   ├── detector.py           # Core photo detection logic
+│   ├── rotation_detector.py  # Rotation detection algorithms
+│   ├── image_processing.py   # Image transformation utilities
+│   ├── face_detector.py      # Face detection using deep learning
+│   ├── deduplicator.py       # Image deduplication
+│   ├── location_identifier.py # Location identification using Ollama
+│   ├── workflow.py           # Processing workflow functions
+│   ├── preview.py            # Display and preview utilities
+│   └── cli.py                # Command-line interface
 ├── tests/
 │   ├── __init__.py
-│   ├── test_detector.py  # Tests for detector module
-│   └── test_cli.py       # Tests for CLI module
+│   ├── test_detector.py      # Tests for detector module
+│   ├── test_cli.py           # Tests for CLI module
+│   ├── test_deduplicator.py  # Tests for deduplicator module
+│   └── test_location_identifier.py  # Tests for location identifier
 ├── examples/
-│   ├── create_sample.py  # Sample data generator
-│   └── README.md         # Examples documentation
-├── requirements.txt      # Python dependencies
-├── setup.py             # Package configuration
-└── README.md            # Main documentation
+│   ├── create_sample.py      # Sample data generator
+│   └── README.md             # Examples documentation
+├── requirements.txt          # Python dependencies
+├── setup.py                  # Package configuration
+└── README.md                 # Main documentation
 ```
 
 ## Key Modules
@@ -197,9 +206,44 @@ Contains the `PhotoDetector` class with methods:
 - `detect_photos()`: Find photos in a scanned image
 - `extract_photo()`: Extract individual photos
 - `detect_rotation()`: Detect rotation angle
+- `detect_rotation_enhanced()`: Enhanced rotation detection with confidence
 - `rotate_image()`: Correct rotation
+- `remove_dust()`: Remove dust and scratches
 - `detect_faces()`: Detect people in images using deep learning
-- `_load_face_detector()`: Load face detection model (internal)
+
+### rotation_detector.py
+
+Contains the `RotationDetector` class with rotation detection algorithms:
+- `detect_rotation()`: Main rotation detection method
+- `detect_rotation_enhanced()`: Multi-strategy detection with confidence scoring
+- `_detect_rotation_hough()`: Hough line transform approach
+- `_detect_rotation_projection()`: Projection profile analysis approach
+
+### image_processing.py
+
+Pure utility functions for image transformations:
+- `rotate_image()`: Rotate an image by a given angle
+- `remove_dust()`: Advanced dust and scratch removal
+
+### face_detector.py
+
+Contains the `FaceDetector` class for face detection:
+- `detect_faces()`: Detect faces using deep learning (ResNet SSD)
+- `_load_face_detector()`: Load face detection model
+
+### workflow.py
+
+Processing workflow functions:
+- `process_single_photo()`: Extract and process a single photo
+- `identify_photo_location()`: Identify location using Ollama
+- `save_photo_with_metadata()`: Save photo with metadata
+- `deduplicate_extracted_photos()`: Deduplicate extracted photos
+
+### preview.py
+
+Display and user interaction functions:
+- `show_detection_preview()`: Show detected photos with bounding boxes
+- `show_photo_preview()`: Interactive photo preview and acceptance
 
 ### cli.py
 

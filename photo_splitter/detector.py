@@ -2,7 +2,7 @@
 Core photo detection and processing module
 """
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -207,7 +207,7 @@ class PhotoDetector:
         """
         return remove_dust(image)
 
-    def detect_faces(self, image: np.ndarray) -> List[Dict[str, any]]:
+    def detect_faces(self, image: np.ndarray) -> List[Dict[str, Any]]:
         """
         Detect faces in an image using deep learning
 
