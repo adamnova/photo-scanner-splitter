@@ -462,8 +462,14 @@ for i, (contour, bbox) in enumerate(photos):
 photo-scanner-splitter/
 ├── photo_splitter/
 │   ├── __init__.py
-│   ├── detector.py           # Core photo detection and processing
+│   ├── detector.py           # Core photo detection logic
+│   ├── rotation_detector.py  # Rotation detection algorithms
+│   ├── image_processing.py   # Image transformation utilities
+│   ├── face_detector.py      # Face detection using deep learning
+│   ├── deduplicator.py       # Image deduplication
 │   ├── location_identifier.py # Location identification using Ollama
+│   ├── workflow.py           # Processing workflow functions
+│   ├── preview.py            # Display and preview utilities
 │   └── cli.py                # Command-line interface
 ├── tests/                    # Test files
 ├── examples/                 # Example images and usage

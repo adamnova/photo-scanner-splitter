@@ -5,14 +5,17 @@ Command-line interface for photo splitter
 import argparse
 import sys
 from pathlib import Path
-from typing import List, Tuple
-
-import cv2
-import numpy as np
 
 from .deduplicator import ImageDeduplicator
-from .detector import ROTATION_THRESHOLD_DEGREES, PhotoDetector
+from .detector import PhotoDetector
 from .location_identifier import LocationIdentifier
+from .preview import show_detection_preview, show_photo_preview
+from .workflow import (
+    deduplicate_extracted_photos,
+    identify_photo_location,
+    process_single_photo,
+    save_photo_with_metadata,
+)
 
 
 class PhotoSplitterCLI:
@@ -102,56 +105,31 @@ class PhotoSplitterCLI:
 
         # Show preview if interactive
         if self.interactive:
-            self._show_detection_preview(str(image_path), detected_photos)
+            show_detection_preview(str(image_path), detected_photos)
 
         # Extract all photos first
         extracted_photos = []
         base_name = image_path.stem
 
         for idx, (contour, bbox) in enumerate(detected_photos, 1):
-            try:
-                # Extract photo
-                photo = self.detector.extract_photo(str(image_path), contour, bbox)
-
-                # Apply dust removal if enabled
-                if self.dust_removal:
-                    photo = self.detector.remove_dust(photo)
-
-                # Auto-rotate if enabled
-                if self.auto_rotate:
-                    angle = self.detector.detect_rotation(photo)
-                    if abs(angle) > ROTATION_THRESHOLD_DEGREES:
-                        print(f"  Photo {idx}: Detected rotation of {angle:.1f}°")
-                        photo = self.detector.rotate_image(photo, -angle)
-
+            photo = process_single_photo(
+                self.detector,
+                str(image_path),
+                contour,
+                bbox,
+                self.auto_rotate,
+                self.dust_removal,
+            )
+            if photo is not None:
                 extracted_photos.append((idx, photo))
-
-            except Exception as e:
-                print(f"  Error processing photo {idx}: {e}")
+            else:
+                print(f"  Error processing photo {idx}")
 
         # Deduplicate extracted photos if enabled
-        if self.deduplicate_photos and self.deduplicator and extracted_photos:
-            print(f"  Deduplicating {len(extracted_photos)} extracted photo(s)...")
-            photos_to_process = [
-                (f"{base_name}_photo_{idx}", photo) for idx, photo in extracted_photos
-            ]
-            unique_photos, duplicates = self.deduplicator.deduplicate_images(photos_to_process)
-
-            if duplicates:
-                print(
-                    f"  Removed {len(duplicates)} duplicate photo(s) (kept higher quality versions)"
-                )
-                for dup in duplicates:
-                    print(f"    - {dup}")
-
-            # Update extracted_photos with only unique ones
-            # Parse back the idx from identifier
-            extracted_photos = []
-            for identifier, photo in unique_photos:
-                # Extract idx from identifier like "scan_photo_1"
-                idx_str = identifier.split("_photo_")[-1]
-                idx = int(idx_str)
-                extracted_photos.append((idx, photo))
+        if self.deduplicate_photos:
+            extracted_photos = deduplicate_extracted_photos(
+                self.deduplicator, extracted_photos, base_name
+            )
 
         # Process and save each unique photo
         saved_count = 0
@@ -159,118 +137,25 @@ class PhotoSplitterCLI:
             try:
                 # Identify location if enabled
                 location_info = None
-                if self.identify_location and self.location_identifier:
-                    print(f"  Photo {idx}: Identifying location...")
-                    try:
-                        location_info = self.location_identifier.identify_location(photo)
-                        if location_info.get("location"):
-                            print(
-                                f"  Photo {idx}: Location: {location_info['location']} "
-                                f"(Confidence: {location_info.get('confidence', 'unknown')})"
-                            )
-                        else:
-                            print(f"  Photo {idx}: Location could not be determined")
-                        if location_info.get("description"):
-                            print(f"  Photo {idx}: {location_info['description']}")
-                    except Exception as e:
-                        print(f"  Photo {idx}: Error identifying location: {e}")
+                if self.identify_location:
+                    location_info = identify_photo_location(self.location_identifier, photo, idx)
 
                 # Show preview and get user confirmation if interactive
                 if self.interactive:
-                    accepted = self._show_photo_preview(photo, idx, len(extracted_photos))
+                    accepted = show_photo_preview(photo, idx, len(extracted_photos))
                     if not accepted:
                         print(f"  Photo {idx}: Skipped by user")
                         continue
 
                 # Save the photo
                 output_path = self.output_dir / f"{base_name}_photo_{idx}.jpg"
-                cv2.imwrite(str(output_path), photo)
-
-                # Save location metadata if available
-                if location_info and (
-                    location_info.get("location") or location_info.get("description")
-                ):
-                    metadata_path = self.output_dir / f"{base_name}_photo_{idx}_location.txt"
-                    with open(metadata_path, "w") as f:
-                        if location_info.get("location"):
-                            f.write(f"Location: {location_info['location']}\n")
-                        if location_info.get("confidence"):
-                            f.write(f"Confidence: {location_info['confidence']}\n")
-                        if location_info.get("description"):
-                            f.write(f"Description: {location_info['description']}\n")
-                    print(f"  Saved metadata: {metadata_path.name}")
-
-                print(f"  Saved: {output_path.name}")
-                saved_count += 1
+                if save_photo_with_metadata(photo, output_path, location_info):
+                    saved_count += 1
 
             except Exception as e:
                 print(f"  Error processing photo {idx}: {e}")
 
         return saved_count
-
-    def _show_detection_preview(
-        self, image_path: str, detected_photos: List[Tuple[np.ndarray, Tuple[int, int, int, int]]]
-    ):
-        """Show preview of detected photos with bounding boxes"""
-        image = cv2.imread(image_path)
-        if image is None:
-            print(f"Warning: Could not read image from {image_path}")
-            return
-
-        preview = image.copy()
-
-        for idx, (_contour, bbox) in enumerate(detected_photos, 1):
-            x, y, w, h = bbox
-            cv2.rectangle(preview, (x, y), (x + w, y + h), (0, 255, 0), 3)
-            cv2.putText(
-                preview, str(idx), (x + 10, y + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
-            )
-
-        # Resize for display if too large
-        max_display_size = 1200
-        h, w = preview.shape[:2]
-        if max(h, w) > max_display_size:
-            scale = max_display_size / max(h, w)
-            new_w, new_h = int(w * scale), int(h * scale)
-            preview = cv2.resize(preview, (new_w, new_h))
-
-        cv2.imshow("Detected Photos (press any key to continue)", preview)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    def _show_photo_preview(self, photo: np.ndarray, photo_num: int, total: int) -> bool:
-        """
-        Show preview of extracted photo and get user confirmation
-
-        Returns:
-            True if user accepts the photo, False otherwise
-        """
-        # Resize for display if too large
-        max_display_size = 800
-        h, w = photo.shape[:2]
-        display_photo = photo.copy()
-        if max(h, w) > max_display_size:
-            scale = max_display_size / max(h, w)
-            new_w, new_h = int(w * scale), int(h * scale)
-            display_photo = cv2.resize(display_photo, (new_w, new_h))
-
-        window_name = f"Photo {photo_num}/{total} - Press 'y' to save, 'n' to skip, 'q' to quit"
-        cv2.imshow(window_name, display_photo)
-
-        while True:
-            key = cv2.waitKey(0) & 0xFF
-            cv2.destroyAllWindows()
-
-            if key == ord("y") or key == ord("Y"):
-                return True
-            elif key == ord("n") or key == ord("N"):
-                return False
-            elif key == ord("q") or key == ord("Q"):
-                print("\nQuitting...")
-                sys.exit(0)
-            else:
-                print("  Press 'y' to save, 'n' to skip, or 'q' to quit")
-                cv2.imshow(window_name, display_photo)
 
     def run(self):
         """Run the photo splitter"""
