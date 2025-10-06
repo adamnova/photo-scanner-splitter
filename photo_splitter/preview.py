@@ -22,7 +22,15 @@ def show_detection_preview(
     Args:
         image_path: Path to the image file
         detected_photos: List of (contour, bbox) tuples
+
+    Raises:
+        ValueError: If image_path is empty or detected_photos is invalid
     """
+    if not image_path:
+        raise ValueError("Image path cannot be empty")
+    if detected_photos is None:
+        raise ValueError("Detected photos list cannot be None")
+
     image = cv2.imread(image_path)
     if image is None:
         print(f"Warning: Could not read image from {image_path}")
@@ -60,7 +68,19 @@ def show_photo_preview(photo: np.ndarray, photo_num: int, total: int) -> bool:
 
     Returns:
         True if user accepts the photo, False otherwise
+
+    Raises:
+        ValueError: If photo is invalid or numbers are out of range
     """
+    if photo is None or photo.size == 0:
+        raise ValueError("Photo cannot be None or empty")
+    if len(photo.shape) < 2:
+        raise ValueError("Photo must be at least 2-dimensional")
+    if photo_num < 1 or total < 1:
+        raise ValueError("Photo numbers must be positive")
+    if photo_num > total:
+        raise ValueError(f"Photo number {photo_num} cannot exceed total {total}")
+
     # Resize for display if too large
     h, w = photo.shape[:2]
     display_photo = photo.copy()

@@ -159,6 +159,11 @@ class PhotoSplitterCLI:
 
     def run(self):
         """Run the photo splitter"""
+        # Validate input path exists
+        if not self.input_path.exists():
+            print(f"Error: {self.input_path} does not exist")
+            return
+
         # Determine input files
         if self.input_path.is_file():
             image_files = [self.input_path]
