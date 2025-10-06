@@ -70,7 +70,7 @@ class PhotoSplitterCLI:
                     ollama_url=ollama_url, model=ollama_model
                 )
                 print(f"Location identification enabled using model: {ollama_model}")
-            except Exception as e:
+            except (ConnectionError, OSError, ValueError) as e:
                 print(f"Warning: Could not initialize location identifier: {e}")
                 print("Continuing without location identification...")
                 self.identify_location = False
@@ -93,7 +93,7 @@ class PhotoSplitterCLI:
         # Detect photos
         try:
             detected_photos = self.detector.detect_photos(str(image_path))
-        except Exception as e:
+        except (ValueError, OSError) as e:
             print(f"Error detecting photos: {e}")
             return 0
 
@@ -152,13 +152,18 @@ class PhotoSplitterCLI:
                 if save_photo_with_metadata(photo, output_path, location_info):
                     saved_count += 1
 
-            except Exception as e:
+            except (ValueError, OSError) as e:
                 print(f"  Error processing photo {idx}: {e}")
 
         return saved_count
 
     def run(self):
         """Run the photo splitter"""
+        # Validate input path exists
+        if not self.input_path.exists():
+            print(f"Error: {self.input_path} does not exist")
+            return
+
         # Determine input files
         if self.input_path.is_file():
             image_files = [self.input_path]
@@ -318,7 +323,7 @@ Examples:
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
         sys.exit(1)
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         print(f"\nError: {e}")
         sys.exit(1)
 

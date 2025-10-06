@@ -51,7 +51,7 @@ class FaceDetector:
             # Load the model
             self.face_net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
 
-        except Exception as e:
+        except (OSError, urllib.error.URLError, cv2.error) as e:
             # If loading fails, face detection will be disabled
             print(f"Warning: Could not load face detection model: {e}")
             self.face_net = None
@@ -67,7 +67,15 @@ class FaceDetector:
             List of dictionaries containing face information:
             - 'bbox': Tuple of (x, y, width, height)
             - 'confidence': Detection confidence score (0.0 to 1.0)
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         if self.face_net is None:
             return []
 

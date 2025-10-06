@@ -9,6 +9,11 @@ from typing import Dict, List, Tuple
 import cv2
 import numpy as np
 
+# Quality score weights for computing overall quality
+QUALITY_WEIGHT_RESOLUTION = 0.0001  # Weight for resolution in quality score
+QUALITY_WEIGHT_SHARPNESS = 10.0  # Weight for sharpness (Laplacian variance)
+QUALITY_WEIGHT_BRIGHTNESS = 0.5  # Weight for brightness variance
+
 
 class ImageDeduplicator:
     """Detects and removes duplicate images based on perceptual hashing with quality preference"""
@@ -40,7 +45,15 @@ class ImageDeduplicator:
 
         Returns:
             Hexadecimal string representation of the perceptual hash
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         # Convert to grayscale if needed
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
 
@@ -77,7 +90,15 @@ class ImageDeduplicator:
 
         Returns:
             Quality score (higher is better)
+
+        Raises:
+            ValueError: If image is invalid or empty
         """
+        if image is None or image.size == 0:
+            raise ValueError("Image cannot be None or empty")
+        if len(image.shape) < 2:
+            raise ValueError("Image must be at least 2-dimensional")
+
         height, width = image.shape[:2]
         resolution_score = width * height
 
@@ -93,7 +114,11 @@ class ImageDeduplicator:
 
         # Combine scores (weighted)
         # Resolution is most important, then sharpness, then brightness variance
-        quality_score = resolution_score * 0.0001 + sharpness_score * 10.0 + brightness_score * 0.5
+        quality_score = (
+            resolution_score * QUALITY_WEIGHT_RESOLUTION
+            + sharpness_score * QUALITY_WEIGHT_SHARPNESS
+            + brightness_score * QUALITY_WEIGHT_BRIGHTNESS
+        )
 
         return quality_score
 

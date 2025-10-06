@@ -53,7 +53,13 @@ class PhotoDetector:
         Returns:
             List of tuples (contour, bounding_box) for each detected photo.
             Each bounding_box is a tuple of (x, y, w, h).
+
+        Raises:
+            ValueError: If image path is invalid or image cannot be read
         """
+        if not image_path:
+            raise ValueError("Image path cannot be empty")
+
         # Read the image
         image = cv2.imread(image_path)
         if image is None:
@@ -106,12 +112,24 @@ class PhotoDetector:
 
         Returns:
             Extracted photo as numpy array
+
+        Raises:
+            ValueError: If image path is invalid, image cannot be read, or bounding box is invalid
         """
+        if not image_path:
+            raise ValueError("Image path cannot be empty")
+
         image = cv2.imread(image_path)
         if image is None:
             raise ValueError(f"Could not read image from {image_path}")
 
         x, y, w, h = bounding_box
+
+        # Validate bounding box
+        if w <= 0 or h <= 0:
+            raise ValueError(f"Invalid bounding box dimensions: width={w}, height={h}")
+        if x < 0 or y < 0:
+            raise ValueError(f"Invalid bounding box position: x={x}, y={y}")
 
         # Extract the region
         extracted = image[y : y + h, x : x + w]
@@ -120,8 +138,6 @@ class PhotoDetector:
 
     def detect_rotation(self, image: np.ndarray) -> float:
         """
-        Detect the rotation angle of a photo
-
         Detect the rotation angle of a photo using multiple strategies
 
         Args:

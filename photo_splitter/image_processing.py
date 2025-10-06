@@ -19,7 +19,15 @@ def rotate_image(image: np.ndarray, angle: float) -> np.ndarray:
 
     Returns:
         Rotated image
+
+    Raises:
+        ValueError: If image is invalid or empty
     """
+    if image is None or image.size == 0:
+        raise ValueError("Image cannot be None or empty")
+    if len(image.shape) < 2:
+        raise ValueError("Image must be at least 2-dimensional")
+
     if abs(angle) < ROTATION_THRESHOLD_DEGREES:  # Don't rotate if angle is very small
         return image
 
@@ -67,7 +75,15 @@ def remove_dust(image: np.ndarray) -> np.ndarray:
 
     Returns:
         Cleaned image with dust removed (quality-optimized)
+
+    Raises:
+        ValueError: If image is invalid or empty
     """
+    if image is None or image.size == 0:
+        raise ValueError("Image cannot be None or empty")
+    if len(image.shape) < 2:
+        raise ValueError("Image must be at least 2-dimensional")
+
     # Work with a copy to avoid modifying the original
     cleaned = image.copy()
 
